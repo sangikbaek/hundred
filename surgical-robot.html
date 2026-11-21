@@ -10,75 +10,54 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: 화면 전체가 수술실 무대. 왼쪽 위 제목, 아래 조작 독, 오른쪽 맥락 패널(넓은 화면) / 아래 시트(폰). */
+/* Layout: 화면 전체가 어두운 수술실(실시간 렌더). 왼쪽 위 제목, 아래 조작 독, 오른쪽 유리 패널(넓은 화면) / 아래 시트(폰).
+   한 가지 어두운 화면으로 고정한 디자인이라 라이트 테마 블록은 두지 않음. */
 :root {
-  --bg: #e7ecf1;
-  --bg-deep: #d0dae4;
-  --ink: #0f1a24;
-  --ink-soft: #4b5b6a;
-  --line: rgba(15, 26, 36, .09);
-  --panel: rgba(249, 251, 253, .87);
-  --panel-edge: rgba(15, 26, 36, .10);
-  --accent: #1d63a6;
-  --accent-soft: rgba(29, 99, 166, .12);
-  --on-accent: #ffffff;
+  --bg: #06090c;
+  --ink: #e7eef3;
+  --ink-soft: #98a8b5;
+  --panel: rgba(10, 15, 20, .72);
+  --panel-edge: rgba(231, 238, 243, .11);
+  --accent: #6cb6ff;
+  --accent-soft: rgba(108, 182, 255, .17);
+  --on-accent: #03172a;
   --osd: #a9e3ff;
-  --scope: #05070a;
-  --shadow: 0 12px 32px rgba(15, 26, 36, .12);
+  --scope: #040608;
+  --shadow: 0 18px 44px rgba(0, 0, 0, .55);
   --font-ui: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0a1017; --bg-deep: #15212e; --ink: #e2eaf1; --ink-soft: #93a4b4; --line: rgba(226, 234, 241, .07);
-    --panel: rgba(15, 23, 32, .87); --panel-edge: rgba(226, 234, 241, .10); --accent: #6aaef0; --accent-soft: rgba(106, 174, 240, .16);
-    --on-accent: #06192b; --osd: #a9e3ff; --scope: #05070a; --shadow: 0 12px 32px rgba(0, 0, 0, .45);
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0a1017; --bg-deep: #15212e; --ink: #e2eaf1; --ink-soft: #93a4b4; --line: rgba(226, 234, 241, .07);
-  --panel: rgba(15, 23, 32, .87); --panel-edge: rgba(226, 234, 241, .10); --accent: #6aaef0; --accent-soft: rgba(106, 174, 240, .16);
-  --on-accent: #06192b; --osd: #a9e3ff; --scope: #05070a; --shadow: 0 12px 32px rgba(0, 0, 0, .45);
-  color-scheme: dark;
-}
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body {
-  margin: 0; overflow: hidden; background: var(--bg); color: var(--ink);
-  font: 400 14px/1.5 var(--font-ui); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
-}
+body { margin: 0; overflow: hidden; background: var(--bg); color: var(--ink); font: 400 14px/1.5 var(--font-ui); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; }
 
-#stage { position: fixed; inset: 0; background: radial-gradient(120% 95% at 50% 40%, var(--bg-deep) 0%, var(--bg) 72%); }
-#stage::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 48px 48px; background-position: center;
-  -webkit-mask-image: radial-gradient(70% 60% at 50% 45%, #000 20%, transparent 100%);
-  mask-image: radial-gradient(70% 60% at 50% 45%, #000 20%, transparent 100%);
-}
+#stage { position: fixed; inset: 0; background: var(--bg); }
 #stage canvas { position: absolute; inset: 0; display: block; touch-action: none; outline: none; }
 .labels { position: absolute; inset: 0; pointer-events: none; }
 
 .hud {
   position: fixed; inset: 0; pointer-events: none;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 14px);
   display: grid; grid-template-columns: minmax(0, 1fr) 344px; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 10px 20px;
 }
 .hud > * { pointer-events: auto; }
-.head { grid-column: 1; grid-row: 1; align-self: start; max-width: 30rem; pointer-events: none; }
+.head { grid-column: 1; grid-row: 1; align-self: start; max-width: 30rem; pointer-events: none; text-shadow: 0 2px 16px rgba(0, 0, 0, .6); }
 .eyebrow { margin: 0 0 4px; font: 500 11px/1.2 var(--font-data); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
 .head h1 { margin: 0; font-weight: 700; font-size: clamp(20px, 2.4vw, 28px); line-height: 1.2; letter-spacing: -.01em; text-wrap: balance; }
 .head p:not(.eyebrow) { margin: 6px 0 0; color: var(--ink-soft); font-size: 13.5px; max-width: 36ch; }
+.quality { pointer-events: auto; margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--panel-edge); background: var(--panel); border-radius: 999px; padding: 4px 12px 4px 10px; font: 500 12px/1.3 var(--font-data); color: var(--ink-soft); cursor: pointer; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); text-shadow: none; }
+.quality i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.quality[data-q="fast"] i { background: var(--ink-soft); box-shadow: none; }
+.quality:hover { color: var(--ink); }
 
 .side { grid-column: 2; grid-row: 1 / 3; align-self: start; min-height: 0; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 10px; scrollbar-width: thin; }
-.card { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2); min-width: 0; }
 .card h2 { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.3; }
 .card .en { margin: 2px 0 0; font: 400 11.5px/1.3 var(--font-data); color: var(--ink-soft); letter-spacing: .02em; }
 .card p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.65; }
@@ -95,14 +74,12 @@ button { font: inherit; color: inherit; }
 .spec dt { color: var(--ink-soft); }
 .spec dd { margin: 0; font-family: var(--font-data); font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; }
 .fine { margin-top: 10px !important; font-size: 12px !important; color: var(--ink-soft) !important; line-height: 1.55 !important; }
-
 .steps { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 7px; counter-reset: step; }
 .steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; color: var(--ink-soft); }
 .steps li::before { counter-increment: step; content: counter(step); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--panel-edge); font: 500 11px/1 var(--font-data); }
 .steps li.done::before { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 .steps li.now { color: var(--ink); font-weight: 600; }
-.steps li.now::before { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-
+.steps li.now::before { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: 0 0 14px var(--accent-soft); }
 .readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .readout { border: 1px solid var(--panel-edge); border-radius: 10px; padding: 8px 10px; min-width: 0; }
 .readout small { display: block; font-size: 11.5px; color: var(--ink-soft); }
@@ -126,24 +103,25 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; heigh
 .pip-wrap { position: relative; aspect-ratio: 4 / 3; max-width: 100%; border-radius: 16px; background: var(--scope); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--panel-edge); }
 .pip-view { position: absolute; inset: 6% 5%; border-radius: 10px; overflow: hidden; background: #000; }
 .pip-view canvas { display: block; width: 100%; height: 100%; }
-.pip-osd { position: absolute; inset: 0; pointer-events: none; font: 500 11px/1.3 var(--font-data); color: var(--osd); letter-spacing: .04em; }
+.pip-view::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 110% at 50% 50%, transparent 55%, rgba(0, 0, 0, .55) 100%); }
+.pip-osd { position: absolute; inset: 0; pointer-events: none; font: 500 11px/1.3 var(--font-data); color: var(--osd); letter-spacing: .04em; z-index: 1; }
 .pip-osd span { position: absolute; }
 .pip-osd .tl { left: 9%; top: 9%; } .pip-osd .tr { right: 9%; top: 9%; text-align: right; }
 .pip-osd .bl { left: 9%; bottom: 9%; } .pip-osd .br { right: 9%; bottom: 9%; text-align: right; }
 
 .status { grid-column: 1 / -1; grid-row: 3; justify-self: center; max-width: 100%; font-size: 12.5px; color: var(--ink-soft); background: var(--panel); border: 1px solid var(--panel-edge); padding: 4px 12px; border-radius: 999px; pointer-events: none; text-align: center; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-.dock { grid-column: 1 / -1; grid-row: 4; justify-self: center; max-width: 100%; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 6px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 18px; box-shadow: var(--shadow); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-.key { display: grid; justify-items: center; gap: 3px; min-width: 66px; padding: 8px 6px 7px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; color: var(--ink); font-size: 12.5px; font-weight: 600; white-space: nowrap; transition: background-color .2s, color .2s; }
+.dock { grid-column: 1 / -1; grid-row: 4; justify-self: center; max-width: 100%; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 6px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 18px; box-shadow: var(--shadow); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2); }
+.key { display: grid; justify-items: center; gap: 3px; min-width: 66px; padding: 8px 6px 7px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; color: var(--ink); font-size: 12.5px; font-weight: 600; white-space: nowrap; transition: background-color .2s, color .2s, box-shadow .2s; }
 .key svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .key:hover { background: var(--accent-soft); }
-.key[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
-.key:focus-visible, .btn:focus-visible, .chip:focus-visible, .x-btn:focus-visible, .tag-box:focus-visible, .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.key[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 22px rgba(108, 182, 255, .35); }
+.key:focus-visible, .btn:focus-visible, .chip:focus-visible, .x-btn:focus-visible, .tag-box:focus-visible, .seg button:focus-visible, .quality:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .tag { position: absolute; width: 0; height: 0; opacity: 0; transition: opacity .35s ease; pointer-events: none; }
 .tag.on { opacity: 1; }
-.tag::before { content: ""; position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.tag-line { position: absolute; left: 0; top: 0; height: 1px; background: var(--ink-soft); opacity: .55; transform-origin: 0 50%; }
-.tag-box { position: absolute; display: grid; text-align: left; white-space: nowrap; cursor: pointer; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 8px; padding: 4px 8px; font: 600 12px/1.25 var(--font-ui); color: var(--ink); box-shadow: 0 4px 14px rgba(0, 0, 0, .08); }
+.tag::before { content: ""; position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 12px var(--accent); }
+.tag-line { position: absolute; left: 0; top: 0; height: 1px; background: var(--ink-soft); opacity: .6; transform-origin: 0 50%; }
+.tag-box { position: absolute; display: grid; text-align: left; white-space: nowrap; cursor: pointer; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 8px; padding: 4px 8px; font: 600 12px/1.25 var(--font-ui); color: var(--ink); box-shadow: 0 6px 18px rgba(0, 0, 0, .35); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .tag.on .tag-box { pointer-events: auto; }
 .tag-box span { font: 400 10px/1.25 var(--font-data); color: var(--ink-soft); letter-spacing: .02em; }
 .tag.sel .tag-box { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -156,10 +134,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; heigh
   .hud { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .head p:not(.eyebrow) { display: none; }
   .head h1 { font-size: 19px; }
+  .quality { margin-top: 6px; }
   .side { grid-column: 1; grid-row: 2; align-self: end; max-height: 44vh; }
   .side .card { padding: 12px 14px; }
   .card.parts, #specCard, .side .fine { display: none; }
-  .pip-wrap { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 64px); right: max(16px, env(safe-area-inset-right, 0px)); width: min(56vw, 260px); z-index: 2; }
+  .pip-wrap { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 96px); right: max(16px, env(safe-area-inset-right, 0px)); width: min(56vw, 260px); z-index: 2; }
   .dock { width: 100%; }
   .key { min-width: 0; padding: 7px 2px 6px; font-size: 11.5px; }
   .key svg { width: 20px; height: 20px; }
@@ -178,6 +157,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; heigh
     <p class="eyebrow">Robotic surgery · 교육용 3D 모델</p>
     <h1>수술로봇 3D 탐색기</h1>
     <p>다빈치처럼 팔이 여러 개인 복강경 수술로봇의 구조예요. 아래 버튼으로 도킹하고, 분해하고, 콘솔에서 원격 조종해 볼 수 있어요.</p>
+    <button class="quality" id="qualityBtn" type="button" data-q="high"><i></i><span>화질 높음</span></button>
   </header>
 
   <aside class="side" id="side" aria-live="polite">
@@ -311,7 +291,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; heigh
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
 
 /* ================================================================
    기본 유틸
@@ -328,21 +315,22 @@ const wide = matchMedia('(min-width: 900px)');
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const Y_AXIS = V(0, 1, 0);
 const nowS = () => performance.now() / 1000;
+let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 
 const stage = $('#stage');
 let renderer;
 try {
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 } catch (err) {
   stage.innerHTML = '<div class="nogl">이 브라우저에서는 WebGL을 쓸 수 없어 3D 모델을 표시하지 못했어요. 다른 브라우저나 기기에서 열어 주세요.</div>';
   throw err;
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
-renderer.setClearColor(0x000000, 0);
-renderer.autoClear = false;
+renderer.toneMapping = THREE.AgXToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x06090c, 1);
 stage.appendChild(renderer.domElement);
 
 const labelRenderer = new CSS2DRenderer();
@@ -351,49 +339,93 @@ labelRenderer.domElement.className = 'labels';
 stage.appendChild(labelRenderer.domElement);
 
 const scene = new THREE.Scene();
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.background = new THREE.Color(0x06090c);
+const roomFog = new THREE.FogExp2(0x0a0f14, 0.0065);
+scene.fog = roomFog;
 
-const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 600);
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.3, 260);
 camera.position.set(10, 30, 70);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
-controls.minDistance = 1.2; controls.maxDistance = 160;
+controls.minDistance = 1.2; controls.maxDistance = 85;
 controls.autoRotateSpeed = 1.2;
-controls.maxPolarAngle = Math.PI * 0.495;
-
-scene.add(new THREE.HemisphereLight(0xf2f7ff, 0x232a31, 0.8));
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.2); keyLight.position.set(12, 30, 22); scene.add(keyLight);
-const rimLight = new THREE.DirectionalLight(0xcfe3ff, 1.3); rimLight.position.set(-24, 14, -20); scene.add(rimLight);
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.45); fillLight.position.set(-6, 6, 26); scene.add(fillLight);
+controls.maxPolarAngle = Math.PI * 0.48;
 
 /* ================================================================
-   텍스처
+   절차적 텍스처 (외부 이미지 없이 캔버스로 생성)
    ================================================================ */
-function canvasTex(w, h, draw) {
+function canvasTex(w, h, draw, color = true) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  if (color) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
-const DRAPE = { x0: -10.6, x1: 10.6, z0: -4.3, z1: 4.3 };
+const hash = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+function vnoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  return lerp(lerp(hash(xi, yi), hash(xi + 1, yi), u), lerp(hash(xi, yi + 1), hash(xi + 1, yi + 1), u), v);
+}
+// 높이 함수 → 노멀맵
+function normalTex(size, heightFn, strength) {
+  const H = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) H[y * size + x] = heightFn(x, y);
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d'); const img = g.createImageData(size, size);
+  const at = (x, y) => H[((y + size) % size) * size + ((x + size) % size)];
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const dx = (at(x + 1, y) - at(x - 1, y)) * strength, dy = (at(x, y + 1) - at(x, y - 1)) * strength;
+    const l = Math.hypot(dx, dy, 1), i = (y * size + x) * 4;
+    img.data[i] = (-dx / l * 0.5 + 0.5) * 255; img.data[i + 1] = (dy / l * 0.5 + 0.5) * 255; img.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+const weaveN = normalTex(256, (x, y) => 0.5 + 0.25 * Math.sin(x * Math.PI / 4) * Math.sign(Math.sin(y * Math.PI / 8)) + 0.25 * Math.sin(y * Math.PI / 4) * Math.sign(Math.cos(x * Math.PI / 8)) + vnoise(x / 9, y / 9) * 0.6, 1.4);
+const microN = normalTex(256, (x, y) => vnoise(x / 3, y / 3) * 0.6 + vnoise(x / 11, y / 11) * 0.4, 0.6);
+const brushedN = normalTex(256, (x, y) => vnoise(x / 40, y * 1.7) * 0.7 + hash(Math.floor(y), 3) * 0.3, 0.8);
+const leatherN = normalTex(256, (x, y) => Math.pow(vnoise(x / 5, y / 5), 2) + vnoise(x / 2, y / 2) * 0.3, 1.2);
+
+const DRAPE = { x0: -10.8, x1: 10.8, z0: -4.4, z1: 4.4 };
 const WINDOW = { x: 1.0, z: 0.2, rx: 2.3, rz: 1.45 };
-const drapeTex = canvasTex(1024, 416, (g, w, h) => {
-  g.fillStyle = '#2b6787'; g.fillRect(0, 0, w, h);
-  g.globalAlpha = 0.07; g.strokeStyle = '#ffffff'; g.lineWidth = 1;
-  for (let x = -h; x < w; x += 5) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + h, h); g.stroke(); }
-  g.globalAlpha = 1;
+const drapeDraw = (fill, skin, edge) => (g, w, h) => {
+  g.fillStyle = fill; g.fillRect(0, 0, w, h);
   const sx = w / (DRAPE.x1 - DRAPE.x0), sz = h / (DRAPE.z1 - DRAPE.z0);
   const cx = (WINDOW.x - DRAPE.x0) * sx, cz = (WINDOW.z - DRAPE.z0) * sz, rx = WINDOW.rx * sx, rz = WINDOW.rz * sz;
-  const grd = g.createRadialGradient(cx, cz, 0, cx, cz, rx);
-  grd.addColorStop(0, '#d9a07f'); grd.addColorStop(1, '#b97a52');
-  g.fillStyle = grd; g.beginPath(); g.ellipse(cx, cz, rx, rz, 0, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = 'rgba(214,232,242,.75)'; g.lineWidth = 5; g.stroke();
+  if (typeof skin === 'string') { g.fillStyle = skin; } else { const grd = g.createRadialGradient(cx, cz, 0, cx, cz, rx); skin.forEach(([o, c]) => grd.addColorStop(o, c)); g.fillStyle = grd; }
+  g.beginPath(); g.ellipse(cx, cz, rx, rz, 0, 0, Math.PI * 2); g.fill();
+  if (edge) { g.strokeStyle = edge; g.lineWidth = 6; g.stroke(); }
+};
+const drapeTex = canvasTex(1024, 418, drapeDraw('#2c6b8c', [[0, '#e0aa8a'], [0.7, '#c8865d'], [1, '#a9673f']], 'rgba(214,232,242,.8)'));
+const drapeRough = canvasTex(1024, 418, drapeDraw('#e6e6e6', '#6e6e6e', '#8a8a8a'), false);
+drapeTex.wrapS = drapeTex.wrapT = drapeRough.wrapS = drapeRough.wrapT = THREE.ClampToEdgeWrapping;
+
+const floorTex = canvasTex(1024, 1024, (g, S) => {
+  g.fillStyle = '#20282d'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 26000; i++) { const v = rnd(); g.fillStyle = v > 0.5 ? `rgba(160,180,190,${0.05 + rnd() * 0.12})` : `rgba(0,0,0,${0.08 + rnd() * 0.15})`; g.fillRect(rnd() * S, rnd() * S, 1 + rnd() * 2, 1 + rnd() * 2); }
+  g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 3; for (const p of [0, S / 2]) { g.beginPath(); g.moveTo(p, 0); g.lineTo(p, S); g.stroke(); g.beginPath(); g.moveTo(0, p); g.lineTo(S, p); g.stroke(); }
 });
+floorTex.repeat.set(7, 7);
+const floorRough = canvasTex(512, 512, (g, S) => {
+  g.fillStyle = '#5a5a5a'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 90; i++) { const x = rnd() * S, y = rnd() * S, r = 20 + rnd() * 90; const grd = g.createRadialGradient(x, y, 0, x, y, r); grd.addColorStop(0, `rgba(${rnd() > 0.5 ? '120,120,120' : '35,35,35'},0.35)`); grd.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2); }
+}, false);
+floorRough.repeat.set(4, 4);
+const wallTex = canvasTex(1024, 512, (g, w, h) => {
+  const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, '#4d6266'); grd.addColorStop(1, '#3a4b4f'); g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 3;
+  for (let x = 0; x <= w; x += 256) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+  for (let y = 0; y <= h; y += 256) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 2;
+  for (let x = 3; x <= w; x += 256) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+});
+wallTex.repeat.set(4, 1.5);
 function tissueTex(base, vesselRGB) {
   return canvasTex(512, 512, (g, S) => {
-    let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     g.fillStyle = base; g.fillRect(0, 0, S, S);
     for (let i = 0; i < 220; i++) {
       const x = rnd() * S, y = rnd() * S, r = 12 + rnd() * 46, light = rnd() > 0.55;
@@ -424,59 +456,140 @@ const screenTex = canvasTex(512, 300, (g, w, h) => {
   g.beginPath(); g.moveTo(w * 0.92, h * 0.82); g.lineTo(w * 0.56, h * 0.48); g.lineTo(w * 0.53, h * 0.55); g.lineTo(w * 0.86, h * 0.9); g.fill();
   g.fillStyle = '#a9e3ff'; g.font = '500 14px ui-monospace, Menlo, monospace'; g.fillText('3D', 16, 24); g.fillText('00:42:18', w - 92, 24);
 });
-const shadowTex = canvasTex(128, 128, (g, w) => {
-  const grd = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
-  grd.addColorStop(0, 'rgba(0,0,0,0.55)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = grd; g.fillRect(0, 0, w, w);
+screenTex.wrapS = screenTex.wrapT = THREE.ClampToEdgeWrapping;
+const uiTex = canvasTex(256, 160, (g, w, h) => {
+  g.fillStyle = '#071019'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#6cb6ff'; g.fillRect(12, 12, 70, 8); g.fillStyle = 'rgba(108,182,255,.35)';
+  for (let i = 0; i < 4; i++) { g.fillRect(12 + i * 60, 40, 50, 50); }
+  g.fillStyle = 'rgba(231,238,243,.6)'; g.fillRect(12, 110, 160, 6); g.fillRect(12, 126, 110, 6);
 });
+const ledTex = canvasTex(256, 256, (g, S) => {
+  g.fillStyle = '#05080b'; g.fillRect(0, 0, S, S);
+  for (let r = 1; r <= 5; r++) { const n = r * 8; for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2; const x = S / 2 + Math.cos(a) * r * 22, y = S / 2 + Math.sin(a) * r * 22; const grd = g.createRadialGradient(x, y, 0, x, y, 9); grd.addColorStop(0, '#ffffff'); grd.addColorStop(0.5, '#fff6e6'); grd.addColorStop(1, 'rgba(255,240,220,0)'); g.fillStyle = grd; g.beginPath(); g.arc(x, y, 9, 0, Math.PI * 2); g.fill(); } }
+});
+ledTex.wrapS = ledTex.wrapT = THREE.ClampToEdgeWrapping;
+const hazeTex = canvasTex(64, 256, (g, w, h) => { const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(0.15, 'rgba(255,255,255,0.9)'); grd.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = grd; g.fillRect(0, 0, w, h); });
+
+// 환자 감시 모니터 (심전도·산소포화도 파형이 실제로 흘러감)
+const vitalsCanvas = document.createElement('canvas'); vitalsCanvas.width = 512; vitalsCanvas.height = 320;
+const vitalsTex = new THREE.CanvasTexture(vitalsCanvas); vitalsTex.colorSpace = THREE.SRGBColorSpace;
+const ecg = (p) => { p = ((p % 1) + 1) % 1; if (p < 0.1) return Math.sin(p / 0.1 * Math.PI) * 0.12; if (p < 0.16) return 0; if (p < 0.18) return -0.15; if (p < 0.21) return 1; if (p < 0.24) return -0.3; if (p < 0.36) return 0; if (p < 0.5) return Math.sin((p - 0.36) / 0.14 * Math.PI) * 0.25; return 0; };
+function drawVitals(t) {
+  const g = vitalsCanvas.getContext('2d'), w = 512, h = 320;
+  g.fillStyle = '#020507'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(80,120,140,.18)'; g.lineWidth = 1; for (let x = 0; x < 360; x += 24) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+  const wave = (y0, amp, color, fn) => { g.strokeStyle = color; g.lineWidth = 2.4; g.beginPath(); for (let x = 0; x < 350; x += 2) { const y = y0 - fn(t - (350 - x) / 160) * amp; x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); };
+  wave(80, 50, '#4dff88', (p) => ecg(p * 1.2));
+  wave(175, 30, '#4fd8ff', (p) => Math.pow(Math.max(0, Math.sin(p * 1.2 * Math.PI * 2)), 1.6));
+  wave(265, 24, '#ffd84d', (p) => ((((p * 0.25) % 1) + 1) % 1 < 0.45 ? 1 : 0.05));
+  g.font = '600 42px ui-monospace, Menlo, monospace'; g.fillStyle = '#4dff88'; g.fillText('72', 395, 90);
+  g.fillStyle = '#4fd8ff'; g.fillText('98', 395, 185); g.fillStyle = '#ffd84d'; g.font = '600 30px ui-monospace, Menlo, monospace'; g.fillText('36', 400, 275);
+  g.font = '500 14px ui-monospace, Menlo, monospace'; g.fillStyle = '#9ab'; g.fillText('HR', 470, 50); g.fillText('SpO2', 460, 145); g.fillText('EtCO2', 452, 245);
+  g.fillStyle = '#e7eef3'; g.font = '500 18px ui-monospace, Menlo, monospace'; g.fillText('118/76', 380, 310);
+  vitalsTex.needsUpdate = true;
+}
+drawVitals(0);
+
+/* ================================================================
+   수술실 반사용 환경광 (절차적으로 만든 방을 큐브맵으로 굽기)
+   ================================================================ */
+let studioEnv, roomEnv;
+{
+  const env = new THREE.Scene();
+  const em = (c, i) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(i) });
+  const box0 = new THREE.Mesh(new THREE.BoxGeometry(90, 34, 76), new THREE.MeshBasicMaterial({ color: 0x1c2629, side: THREE.BackSide })); box0.position.y = 17; env.add(box0);
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(90, 76), new THREE.MeshBasicMaterial({ color: 0x0c1013 })); fl.rotation.x = -Math.PI / 2; fl.position.y = 0.05; env.add(fl);
+  for (let i = -2; i <= 2; i++) for (let j = -1; j <= 1; j++) {
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(9, 4), em(0xdfe9f2, 2.2)); p.rotation.x = Math.PI / 2; p.position.set(i * 16, 33.8, j * 20); env.add(p);
+  }
+  for (const [x, z] of [[-2.8, 4.5], [4.8, 2.8]]) { const d = new THREE.Mesh(new THREE.CircleGeometry(2.3, 32), em(0xfff4e6, 18)); d.rotation.x = Math.PI / 2; d.position.set(x, 25.5, z); env.add(d); }
+  const side = new THREE.Mesh(new THREE.PlaneGeometry(30, 14), em(0xbfd8ff, 1.2)); side.rotation.y = Math.PI / 2; side.position.set(-44.5, 14, 0); env.add(side);
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(12, 7), em(0x6cb6ff, 0.8)); back.position.set(-6, 16, -37.5); env.add(back);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(env, 0.03, 0.1, 200).texture;
+  scene.environmentIntensity = 1.0;
+  // 손목 확대용 스튜디오: 큰 소프트박스 세 개
+  const studio = new THREE.Scene();
+  const sb = new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), new THREE.MeshBasicMaterial({ color: 0x0c1218, side: THREE.BackSide })); studio.add(sb);
+  for (const [w, h, pos, c, k] of [[30, 12, [0, 26, 6], 0xffffff, 3.2], [10, 26, [-30, 6, 8], 0xcfe2ff, 2.2], [10, 26, [30, 4, -10], 0x8fbfff, 1.6], [40, 6, [0, -14, 20], 0x6a7a8a, 0.6]]) {
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), em(c, k)); p.position.set(...pos); p.lookAt(0, 0, 0); studio.add(p);
+  }
+  studioEnv = pmrem.fromScene(studio, 0.02, 0.1, 100).texture;
+  roomEnv = scene.environment;
+}
 
 /* ================================================================
    재질
    ================================================================ */
+const P = (o) => new THREE.MeshPhysicalMaterial(o);
 const M = {
-  shell: new THREE.MeshPhysicalMaterial({ color: 0xeef1f4, roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.25 }),
-  shellDim: new THREE.MeshPhysicalMaterial({ color: 0xc8cfd6, roughness: 0.4, clearcoat: 0.3 }),
-  graphite: new THREE.MeshPhysicalMaterial({ color: 0x2d3239, roughness: 0.45, clearcoat: 0.3 }),
-  metal: new THREE.MeshStandardMaterial({ color: 0xd0d6dc, metalness: 1, roughness: 0.22 }),
-  darkMetal: new THREE.MeshStandardMaterial({ color: 0x6d747c, metalness: 1, roughness: 0.32 }),
-  led: new THREE.MeshStandardMaterial({ color: 0x0c3550, emissive: 0x52b8ff, emissiveIntensity: 1.3 }),
-  rubber: new THREE.MeshStandardMaterial({ color: 0x16191c, roughness: 0.8 }),
-  tableBase: new THREE.MeshStandardMaterial({ color: 0x9aa3ac, metalness: 0.6, roughness: 0.35 }),
-  tablePad: new THREE.MeshStandardMaterial({ color: 0x24282d, roughness: 0.7 }),
-  drape: new THREE.MeshStandardMaterial({ map: drapeTex, roughness: 0.9, side: THREE.DoubleSide }),
-  cannula: new THREE.MeshStandardMaterial({ color: 0x30353b, metalness: 0.5, roughness: 0.32 }),
-  shaft: new THREE.MeshStandardMaterial({ color: 0x3a4047, metalness: 0.6, roughness: 0.3 }),
-  tipMetal: new THREE.MeshStandardMaterial({ color: 0xc9d0d6, metalness: 1, roughness: 0.26 }),
-  housing: new THREE.MeshPhysicalMaterial({ color: 0xdfe4e9, roughness: 0.38, clearcoat: 0.4 }),
-  tab: new THREE.MeshStandardMaterial({ color: 0x1d63a6, roughness: 0.4 }),
-  camHead: new THREE.MeshPhysicalMaterial({ color: 0x1f242a, roughness: 0.35, clearcoat: 0.6 }),
-  glass: new THREE.MeshPhysicalMaterial({ color: 0x0a1018, roughness: 0.05, clearcoat: 1, envMapIntensity: 2 }),
-  pad: new THREE.MeshStandardMaterial({ color: 0x1b1e22, roughness: 0.85 }),
+  shell: P({ color: 0xf2f4f6, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.07, normalMap: microN, normalScale: new THREE.Vector2(0.06, 0.06) }),
+  shellDim: P({ color: 0xc5ccd3, roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.15 }),
+  graphite: P({ color: 0x23272d, roughness: 0.38, metalness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.2, normalMap: microN, normalScale: new THREE.Vector2(0.1, 0.1) }),
+  metal: P({ color: 0xd4dae0, metalness: 1, roughness: 0.18, anisotropy: 0.6, normalMap: brushedN, normalScale: new THREE.Vector2(0.12, 0.12) }),
+  chrome: P({ color: 0xeef2f5, metalness: 1, roughness: 0.06 }),
+  darkMetal: P({ color: 0x5f666e, metalness: 1, roughness: 0.3, anisotropy: 0.5 }),
+  led: new THREE.MeshStandardMaterial({ color: 0x0a2a44, emissive: 0x5ab4ff, emissiveIntensity: 5 }),
+  ledWarm: new THREE.MeshStandardMaterial({ color: 0x241808, emissive: 0xffb44d, emissiveIntensity: 4 }),
+  rubber: P({ color: 0x15181b, roughness: 0.7, sheen: 0.3, sheenColor: new THREE.Color(0x555555) }),
+  tableBase: P({ color: 0xbfc6cd, metalness: 1, roughness: 0.22, anisotropy: 0.5, normalMap: brushedN, normalScale: new THREE.Vector2(0.15, 0.15) }),
+  tablePad: P({ color: 0x1d2125, roughness: 0.55, clearcoat: 0.3, normalMap: leatherN, normalScale: new THREE.Vector2(0.4, 0.4) }),
+  drape: P({ map: drapeTex, roughnessMap: drapeRough, roughness: 1, normalMap: weaveN, normalScale: new THREE.Vector2(0.35, 0.35), sheen: 0.9, sheenColor: new THREE.Color(0x8fc3e6), sheenRoughness: 0.55, side: THREE.DoubleSide }),
+  drapeBlue: P({ color: 0x2c6b8c, roughness: 0.85, normalMap: weaveN, normalScale: new THREE.Vector2(0.35, 0.35), sheen: 0.9, sheenColor: new THREE.Color(0x8fc3e6), sheenRoughness: 0.55, side: THREE.DoubleSide }),
+  cannula: P({ color: 0x2a2f35, metalness: 0.7, roughness: 0.25, clearcoat: 0.5 }),
+  shaft: P({ color: 0x31363d, metalness: 0.8, roughness: 0.22, anisotropy: 0.7, clearcoat: 0.4 }),
+  tipMetal: P({ color: 0xcfd6dc, metalness: 1, roughness: 0.2, anisotropy: 0.7, anisotropyRotation: Math.PI / 2, normalMap: brushedN, normalScale: new THREE.Vector2(0.1, 0.1) }),
+  housing: P({ color: 0xe4e9ee, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
+  tab: P({ color: 0x1f6fbd, roughness: 0.35, clearcoat: 0.6 }),
+  camHead: P({ color: 0x1b1f24, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
+  glass: P({ color: 0x0b1118, roughness: 0.04, clearcoat: 1, envMapIntensity: 1.6 }),
+  eyepiece: new THREE.MeshStandardMaterial({ color: 0x050a10, emissive: 0x2a6db0, emissiveIntensity: 0.9, roughness: 0.1 }),
+  pad: P({ color: 0x17191c, roughness: 0.6, normalMap: leatherN, normalScale: new THREE.Vector2(0.5, 0.5), sheen: 0.4, sheenColor: new THREE.Color(0x444444) }),
   white: new THREE.MeshStandardMaterial({ color: 0xf1f3f4, roughness: 0.4 }),
-  screen: new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false }),
-  shadow: new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: 0.6 }),
+  screen: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: screenTex, emissiveIntensity: 1.3, roughness: 0.18 }),
+  ui: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: uiTex, emissiveIntensity: 1.2, roughness: 0.2 }),
+  vitals: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: vitalsTex, emissiveIntensity: 1.5, roughness: 0.2 }),
+  floor: P({ map: floorTex, roughnessMap: floorRough, roughness: 1, clearcoat: 0.55, clearcoatRoughness: 0.12, normalMap: microN, normalScale: new THREE.Vector2(0.05, 0.05) }),
+  wall: P({ map: wallTex, roughness: 0.7, clearcoat: 0.2 }),
+  ceil: new THREE.MeshStandardMaterial({ color: 0x1b2226, roughness: 0.9 }),
+  panelLight: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xe6f0ff, emissiveIntensity: 2.6 }),
+  lampLED: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xfff3e2, emissiveMap: ledTex, emissiveIntensity: 9, roughness: 0.3 }),
+  haze: new THREE.MeshBasicMaterial({ color: 0xfff1df, alphaMap: hazeTex, transparent: true, opacity: 0.009, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }),
+  bag: P({ color: 0xeaf4ff, roughness: 0.08, transmission: 0.92, thickness: 0.4, ior: 1.4, clearcoat: 1 }),
+  hose: P({ color: 0x8fb6d4, roughness: 0.35, transmission: 0.5, thickness: 0.3, clearcoat: 0.6 }),
+  gasGreen: P({ color: 0x2f8a52, roughness: 0.35, clearcoat: 0.8 }),
+  gasWhite: P({ color: 0xe8ecef, roughness: 0.3, clearcoat: 0.8 }),
+  yellow: P({ color: 0xd7a72d, roughness: 0.35, clearcoat: 0.6 }),
+  purple: P({ color: 0x7c58c4, roughness: 0.35, clearcoat: 0.6 }),
 };
 const T = { // 몸 안 (내시경 화면 전용, 레이어 2)
-  wall: new THREE.MeshPhysicalMaterial({ map: tissueTex('#d4877c', '150,40,50'), side: THREE.BackSide, roughness: 0.55, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: 0 }),
-  bowel: new THREE.MeshPhysicalMaterial({ map: tissueTex('#d98f80', '160,50,60'), roughness: 0.45, clearcoat: 1, clearcoatRoughness: 0.15, envMapIntensity: 0 }),
-  fat: new THREE.MeshPhysicalMaterial({ color: 0xe9c27a, roughness: 0.5, clearcoat: 0.7, envMapIntensity: 0 }),
-  pad: new THREE.MeshPhysicalMaterial({ map: tissueTex('#e2a092', '170,60,70'), roughness: 0.5, clearcoat: 1, clearcoatRoughness: 0.12, envMapIntensity: 0 }),
+  wall: P({ map: tissueTex('#d4877c', '150,40,50'), side: THREE.BackSide, roughness: 0.55, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: 0 }),
+  bowel: P({ map: tissueTex('#d98f80', '160,50,60'), roughness: 0.45, clearcoat: 1, clearcoatRoughness: 0.15, envMapIntensity: 0 }),
+  fat: P({ color: 0xe9c27a, roughness: 0.5, clearcoat: 0.7, envMapIntensity: 0 }),
+  pad: P({ map: tissueTex('#e2a092', '170,60,70'), roughness: 0.5, clearcoat: 1, clearcoatRoughness: 0.12, envMapIntensity: 0 }),
   cut: new THREE.MeshStandardMaterial({ color: 0x6e1414, roughness: 0.6, envMapIntensity: 0 }),
   suture: new THREE.MeshStandardMaterial({ color: 0x5b3fa8, roughness: 0.5, envMapIntensity: 0 }),
   needle: new THREE.MeshStandardMaterial({ color: 0xd9dde2, metalness: 1, roughness: 0.25, envMapIntensity: 0 }),
 };
 
 const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
-const cyl = (rt, rb, h, s = 32) => new THREE.CylinderGeometry(rt, rb, h, s);
+const cyl = (rt, rb, h, s = 40) => new THREE.CylinderGeometry(rt, rb, h, s);
 const box = (x, y, z) => new THREE.BoxGeometry(x, y, z);
-function roundedBox(w, h, d, r, mat) {
+const rbox = (w, h, d, r, mat, x = 0, y = 0, z = 0) => mesh(new RoundedBoxGeometry(w, h, d, 5, Math.min(r, w / 2 - 1e-3, h / 2 - 1e-3, d / 2 - 1e-3)), mat, x, y, z);
+// 모서리를 깎은 원통 (관절 하우징)
+function pillGeo(r, h, c = 0.08, s = 48) {
+  const p = [[0, -h / 2], [r - c, -h / 2], [r - c * 0.3, -h / 2 + c * 0.3], [r, -h / 2 + c], [r, h / 2 - c], [r - c * 0.3, h / 2 - c * 0.3], [r - c, h / 2], [0, h / 2]];
+  return new THREE.LatheGeometry(p.map(([x, y]) => new THREE.Vector2(x, y)), s);
+}
+// 둥근 사각 단면을 Y축으로 1만큼 뽑은 링크 (길이는 scale.y로 조절)
+function linkGeo(w, d, r) {
   const s = new THREE.Shape(); const x = -w / 2, y = -d / 2;
   s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + d - r);
   s.quadraticCurveTo(x + w, y + d, x + w - r, y + d); s.lineTo(x + r, y + d); s.quadraticCurveTo(x, y + d, x, y + d - r);
   s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
-  const g = new THREE.ExtrudeGeometry(s, { depth: h, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.08, bevelSegments: 3, curveSegments: 8 });
-  g.rotateX(-Math.PI / 2); g.translate(0, -h / 2, 0);
-  return new THREE.Mesh(g, mat);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false, curveSegments: 10 });
+  g.rotateX(-Math.PI / 2); g.translate(0, -0.5, 0);
+  return g;
 }
 const enableInside = (obj) => obj.traverse((o) => { if (o.isMesh) o.layers.enable(2); });
 
@@ -501,13 +614,15 @@ const INFO = {
   pedals: { ko: '풋 페달', en: 'Foot pedals', desc: '카메라 조작, 클러치(손 위치 다시 잡기), 전기 소작 같은 기능을 발로 켭니다.' },
   vision: { ko: '비전 카트', en: 'Vision cart', desc: '영상 처리 장치, 광원, 전기수술 장비와 보조 모니터가 실려 있어 수술팀 모두가 같은 화면을 봅니다.' },
   table: { ko: '수술대 · 환자', en: 'Operating table', desc: '환자는 멸균 천으로 덮이고, 수술 부위만 소독된 피부가 드러납니다. 배에 이산화탄소를 넣어 공간을 만든 뒤 포트를 냅니다.' },
+  lamp: { ko: '무영등', en: 'Surgical light', desc: '여러 개의 LED가 여러 방향에서 비춰, 손이나 기구에 가려도 수술 부위에 그림자가 덜 생기게 합니다.' },
+  anesthesia: { ko: '마취기 · 감시 모니터', en: 'Anesthesia machine', desc: '마취 가스와 산소를 공급하고 호흡을 돕습니다. 모니터에는 심전도, 산소포화도, 호기말 이산화탄소가 실시간으로 표시됩니다.' },
   wShaft: { ko: '샤프트', en: 'Shaft', desc: '속에 가는 케이블들이 지나가는 관입니다. 샤프트 전체가 돌아 기구 끝을 회전시킵니다.' },
   wPitch: { ko: '피치 관절', en: 'Pitch joint', desc: '손목을 앞뒤로 꺾는 첫 번째 관절입니다.' },
   wYaw: { ko: '요 관절', en: 'Yaw joint', desc: '집게 두 개가 같은 축에서 함께 돌면 좌우로 꺾이고(요), 서로 반대로 돌면 벌어지거나 닫힙니다(그립).' },
   wJaw: { ko: '집게', en: 'Jaws', desc: '바늘이나 조직을 잡는 부분입니다. 안쪽 면에 미끄럼을 막는 홈이 있습니다.' },
   wPulley: { ko: '케이블 풀리', en: 'Cable pulleys', desc: '샤프트 속 케이블이 이 도르래를 감아 당기며 각 관절을 움직입니다.' },
 };
-const CHIP_ORDER = ['cart', 'boom', 'platform', 'setup', 'manip', 'spar', 'drive', 'instrument', 'cannula', 'endoscope', 'console', 'masters', 'vision'];
+const CHIP_ORDER = ['cart', 'boom', 'platform', 'setup', 'manip', 'spar', 'drive', 'instrument', 'cannula', 'endoscope', 'console', 'masters', 'vision', 'anesthesia'];
 
 const tags = {};
 const tagGroups = { explode: [], tele: [], wrist: [] };
@@ -539,26 +654,77 @@ function showTagGroup(group, on) { for (const t of tagGroups[group]) { t.el.clas
    ================================================================ */
 const room = new THREE.Group(); scene.add(room);
 const TABLE_TOP = 9.15;
-function addShadow(x, z, sx, sz) { const m = mesh(new THREE.PlaneGeometry(1, 1), M.shadow, x, 0.02, z); m.rotation.x = -Math.PI / 2; m.scale.set(sx, sz, 1); room.add(m); return m; }
+{
+  const floor = mesh(new THREE.PlaneGeometry(130, 110), M.floor, 0, 0, 10); floor.rotation.x = -Math.PI / 2; floor.userData.noShadowCast = true; room.add(floor);
+  const back = mesh(new THREE.PlaneGeometry(76, 34), M.wall, 0, 17, -28); back.userData.noShadowCast = true; room.add(back);
+  for (const s of [-1, 1]) { const w = mesh(new THREE.PlaneGeometry(76, 34), M.wall, s * 36, 17, 10); w.rotation.y = -s * Math.PI / 2; w.userData.noShadowCast = true; room.add(w); }
+  const ceil = mesh(new THREE.PlaneGeometry(76, 80), M.ceil, 0, 34, 8); ceil.rotation.x = Math.PI / 2; ceil.userData.noShadowCast = true; room.add(ceil);
+  for (let i = -1; i <= 1; i++) for (let j = 0; j <= 1; j++) { const p = mesh(new THREE.PlaneGeometry(10, 4), M.panelLight, i * 18, 33.95, -12 + j * 22); p.rotation.x = Math.PI / 2; p.userData.noShadowCast = true; room.add(p); }
+  room.add(mesh(box(76, 1.2, 0.3), M.graphite, 0, 0.6, -27.85));
+  room.add(mesh(box(76, 0.35, 0.5), M.metal, 0, 3.6, -27.7));
+  room.add(rbox(14, 8.2, 0.5, 0.25, M.graphite, -8, 17, -27.6));
+  room.add(mesh(new THREE.PlaneGeometry(13.2, 7.4), M.screen, -8, 17, -27.33));
+  for (let k = 0; k < 4; k++) {
+    room.add(rbox(4.6, 9, 1.6, 0.12, M.tableBase, 10 + k * 4.8, 4.6, -27.1));
+    room.add(mesh(box(0.12, 2.2, 0.12), M.chrome, 10 + k * 4.8 + 1.6, 5.2, -26.25));
+  }
+  room.add(rbox(19.6, 0.4, 2.2, 0.1, M.tableBase, 17.2, 9.3, -27));
+}
+
+// --- 무영등 (천장) ---
+const lampSpots = [];
+const lamps = new THREE.Group(); room.add(lamps);
+{
+  lamps.add(mesh(cyl(0.9, 0.9, 1.6), M.shell, 1, 33.2, 1));
+  lamps.add(mesh(cyl(0.35, 0.35, 4.5), M.shell, 1, 30.6, 1));
+  const heads = [[V(-2.8, 25.4, 4.5), V(0.9, 10.6, 0.3)], [V(4.8, 25.9, 2.8), V(1.1, 10.6, 0.3)]];
+  for (const [pos, target] of heads) {
+    const a0 = V(1, 28.6, 1), elbow = V(pos.x * 0.6 + 0.4, 29.2, pos.z * 0.6 + 0.4);
+    const seg2 = (r, p0, p1) => { const m = mesh(cyl(r, r, 1), M.shell); const d = p1.clone().sub(p0); m.position.copy(p0).addScaledVector(d, 0.5); m.scale.y = d.length(); m.quaternion.setFromUnitVectors(Y_AXIS, d.normalize()); lamps.add(m); };
+    seg2(0.28, a0, elbow); seg2(0.22, elbow, pos.clone().add(V(0, 1.6, 0)));
+    lamps.add(mesh(new THREE.SphereGeometry(0.42, 24, 16), M.shellDim, elbow.x, elbow.y, elbow.z));
+    const head = new THREE.Group(); head.position.copy(pos); lamps.add(head);
+    head.lookAt(target);
+    const shellProf = [[0, 0.9], [1.6, 0.75], [2.3, 0.3], [2.45, -0.05], [2.35, -0.15], [0, -0.15]].map(([x, y]) => new THREE.Vector2(x, y));
+    const sh = mesh(new THREE.LatheGeometry(shellProf, 64), M.shell); sh.rotation.x = -Math.PI / 2; head.add(sh);
+    head.add(new THREE.Mesh(new THREE.TorusGeometry(2.38, 0.09, 12, 64), M.graphite));
+    head.add(mesh(new THREE.CircleGeometry(2.25, 64), M.lampLED, 0, 0, 0.16));
+    const handle = mesh(cyl(0.18, 0.22, 0.9, 24), M.graphite, 0, 0, 0.55); handle.rotation.x = Math.PI / 2; head.add(handle);
+    const dist = pos.distanceTo(target);
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 3.4, dist, 48, 1, true), M.haze);
+    cone.position.copy(pos).lerp(target, 0.5); cone.quaternion.setFromUnitVectors(Y_AXIS, pos.clone().sub(target).normalize()); cone.userData.noShadowCast = true; lamps.add(cone);
+    const spot = new THREE.SpotLight(0xfff4e8, 520, 0, 0.34, 0.8, 2);
+    spot.position.copy(pos).addScaledVector(target.clone().sub(pos).normalize(), 0.3); spot.target.position.copy(target);
+    spot.castShadow = true; spot.shadow.mapSize.set(2048, 2048); spot.shadow.bias = -0.0004; spot.shadow.normalBias = 0.03; spot.shadow.camera.near = 4; spot.shadow.camera.far = 40;
+    room.add(spot, spot.target); lampSpots.push(spot);
+  }
+}
+tagPart('lamp', lamps);
+room.add(new THREE.HemisphereLight(0xcfe0ee, 0x141a1f, 0.8));
+const ceilingKey = new THREE.DirectionalLight(0xe8f0ff, 1.1); ceilingKey.position.set(-8, 40, 16); ceilingKey.castShadow = true;
+Object.assign(ceilingKey.shadow.camera, { left: -32, right: 32, top: 26, bottom: -26, near: 5, far: 90 });
+ceilingKey.shadow.mapSize.set(2048, 2048); ceilingKey.shadow.bias = -0.0005; ceilingKey.shadow.normalBias = 0.04;
+room.add(ceilingKey);
+const rim = new THREE.DirectionalLight(0x7fb4ff, 0.9); rim.position.set(18, 16, -30); room.add(rim);
 
 // --- 수술대 ---
 const table = new THREE.Group(); room.add(table);
-table.add(mesh(box(4.2, 0.5, 2.8), M.tableBase, 0, 0.25, 0));
-table.add(mesh(box(1.5, 7.4, 1.1), M.tableBase, 0, 4.2, 0));
-table.add(mesh(box(18.2, 0.45, 5.0), M.tableBase, 0, 8.3, 0));
-table.add(mesh(box(17.8, 0.6, 4.8), M.tablePad, 0, 8.85, 0));
-for (const s of [-1, 1]) table.add(mesh(box(16.6, 0.12, 0.12), M.metal, 0, 8.45, s * 2.6));
-addShadow(0, 0, 22, 8);
+table.add(rbox(4.4, 0.6, 3.0, 0.2, M.tableBase, 0, 0.3, 0));
+table.add(rbox(1.6, 7.4, 1.2, 0.3, M.tableBase, 0, 4.2, 0));
+table.add(rbox(1.9, 0.8, 1.5, 0.2, M.graphite, 0, 7.9, 0));
+table.add(rbox(18.2, 0.42, 5.0, 0.12, M.tableBase, 0, 8.32, 0));
+for (let k = 0; k < 4; k++) table.add(rbox(4.3, 0.62, 4.8, 0.22, M.tablePad, -6.6 + k * 4.4, 8.84, 0));
+for (const s of [-1, 1]) table.add(mesh(box(16.6, 0.14, 0.14), M.chrome, 0, 8.45, s * 2.62));
 
 // --- 환자 + 멸균 천 ---
 const ell = (x, z, cx, cz, rx, rz, ry) => { const q = ((x - cx) / rx) ** 2 + ((z - cz) / rz) ** 2; return q < 1 ? ry * Math.sqrt(1 - q) : 0; };
 function bodyH(x, z) {
   let h = 0;
-  h = Math.max(h, ell(x, z, 0, 0, 4.6, 1.95, 1.75));      // 몸통
-  h = Math.max(h, ell(x, z, 1.0, 0, 2.9, 1.7, 2.2));      // 부풀린 배
-  h = Math.max(h, ell(x, z, -3.0, 0, 2.6, 2.0, 1.85));    // 가슴
-  h = Math.max(h, ell(x, z, -7.1, 0, 1.0, 0.85, 1.35));   // 머리
-  for (const s of [-1, 1]) {                               // 다리
+  h = Math.max(h, ell(x, z, 0, 0, 4.6, 1.95, 1.75));
+  h = Math.max(h, ell(x, z, 1.0, 0, 2.9, 1.7, 2.2));
+  h = Math.max(h, ell(x, z, -3.0, 0, 2.6, 2.0, 1.85));
+  h = Math.max(h, ell(x, z, -7.1, 0, 1.0, 0.85, 1.35));
+  for (const s of [-1, 1]) {
     const dx = x < 3.6 ? x - 3.6 : x > 8.8 ? x - 8.8 : 0;
     const q = (dx / 0.8) ** 2 + ((z - s * 0.85) / 0.8) ** 2;
     if (q < 1) h = Math.max(h, 0.95 * Math.sqrt(1 - q));
@@ -566,50 +732,58 @@ function bodyH(x, z) {
   return h;
 }
 function drapeY(x, z) {
-  let y = TABLE_TOP + 0.06 + bodyH(x, z) + 0.03 * Math.sin(x * 2.1 + z * 1.4);
+  let y = TABLE_TOP + 0.06 + bodyH(x, z) + 0.035 * Math.sin(x * 2.1 + z * 1.4) + 0.05 * (vnoise(x * 1.3, z * 1.3) - 0.5);
   const ez = Math.abs(z) - 2.45, ex = Math.abs(x) - 8.95;
-  if (ez > 0) y -= ez * 2.7 - 0.18 * Math.sin(x * 2.3) * ez;
-  if (ex > 0) y -= ex * 2.6;
+  if (ez > 0) y -= ez * 2.7 - 0.22 * Math.sin(x * 2.3 + vnoise(x, z) * 2) * ez;
+  if (ex > 0) y -= ex * 2.6 - 0.15 * Math.sin(z * 2.6) * ex;
   return y;
 }
 const skinY = (x, z) => TABLE_TOP + 0.06 + bodyH(x, z);
 {
-  const nx = 170, nz = 70, pos = [], uv = [], idx = [];
+  const nx = 216, nz = 88, pos = [], uv = [], idx = [];
   for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
     const x = lerp(DRAPE.x0, DRAPE.x1, i / nx), z = lerp(DRAPE.z0, DRAPE.z1, j / nz);
     pos.push(x, drapeY(x, z), z); uv.push(i / nx, 1 - j / nz);
   }
-  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-    const a = j * (nx + 1) + i, b = a + 1, c = a + nx + 1, d = c + 1;
-    idx.push(a, c, b, b, c, d);
-  }
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const a = j * (nx + 1) + i, b = a + 1, c = a + nx + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx); g.computeVertexNormals();
   table.add(new THREE.Mesh(g, M.drape));
+  M.drape.normalMap = weaveN.clone(); M.drape.normalMap.needsUpdate = true; M.drape.normalMap.repeat.set(40, 16);
+}
+// 마취 가림막 (환자 머리 쪽)
+{
+  table.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(-5.4, 8.6, -2.75), V(-5.4, 13.6, -1.8), V(-5.4, 14.2, 0), V(-5.4, 13.6, 1.8), V(-5.4, 8.6, 2.75)]), 60, 0.09, 10), M.chrome));
+  const nu = 40, nv = 22, pos = [], idx = [], uvs = [];
+  for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
+    const z = lerp(-2.9, 2.9, i / nu), v = j / nv;
+    const topY = 13.6 + 0.6 * Math.cos((z / 2.9) * Math.PI / 2);
+    pos.push(-5.42 - v * 1.4 - 0.12 * Math.sin(i * 0.9 + v * 3) * v, lerp(topY, 9.4, v), z + 0.08 * Math.sin(v * 5 + i));
+    uvs.push(i / nu * 6, v * 6);
+  }
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const a = j * (nu + 1) + i, b = a + 1, c = a + nu + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(idx); g.computeVertexNormals();
+  table.add(new THREE.Mesh(g, M.drapeBlue));
 }
 tagPart('table', table);
 
 // --- 몸 안 (복강) : 내시경 화면에서만 보임 ---
-const W = V(0.85, 9.9, 0.45);               // 작업 지점 (봉합 중인 조직 위)
+const W = V(0.85, 9.9, 0.45);
 const cavity = new THREE.Group(); room.add(cavity);
 {
   const wall = mesh(new THREE.SphereGeometry(1, 64, 32), T.wall, 1.0, 10.08, 0.2); wall.scale.set(2.7, 1.12, 1.6); cavity.add(wall);
   const pad = mesh(new THREE.SphereGeometry(1, 48, 24), T.pad, 0.85, 9.55, 0.45); pad.scale.set(1.15, 0.36, 0.8); cavity.add(pad);
-  const cut = mesh(box(0.95, 0.03, 0.035), T.cut, 0.85, 9.905, 0.45); cavity.add(cut);
-  for (let k = 0; k < 4; k++) {
-    const st = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.006, 6, 20, Math.PI), T.suture);
-    st.position.set(0.5 + k * 0.12, 9.9, 0.45); st.rotation.y = Math.PI / 2; cavity.add(st);
-  }
-  let seed = 5; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  cavity.add(mesh(box(0.95, 0.03, 0.035), T.cut, 0.85, 9.905, 0.45));
+  for (let k = 0; k < 4; k++) { const st = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.006, 6, 20, Math.PI), T.suture); st.position.set(0.5 + k * 0.12, 9.9, 0.45); st.rotation.y = Math.PI / 2; cavity.add(st); }
   for (let k = 0; k < 9; k++) {
     const a = (k / 9) * Math.PI * 2, r = 1.25 + rnd() * 0.6;
     const loop = mesh(new THREE.TorusGeometry(0.32 + rnd() * 0.12, 0.15, 12, 28), T.bowel, 1.0 + Math.cos(a) * r * 1.2, 9.45 + rnd() * 0.12, 0.3 + Math.sin(a) * r * 0.65);
     loop.rotation.set(Math.PI / 2 + (rnd() - 0.5) * 0.5, 0, rnd() * 3); cavity.add(loop);
   }
   for (let k = 0; k < 5; k++) { const f = mesh(new THREE.SphereGeometry(0.22 + rnd() * 0.12, 16, 12), T.fat, -0.2 + rnd() * 2.4, 9.55, -0.5 + rnd() * 0.5); f.scale.y = 0.55; cavity.add(f); }
-  cavity.traverse((o) => o.layers.set(2));
+  cavity.traverse((o) => { o.layers.set(2); o.userData.noShadowCast = true; o.userData.noShadowRecv = true; });
 }
 
 // --- 손목 기구 (확대용과 로봇용 공통) ---
@@ -620,40 +794,36 @@ function makeJaw(side, mat) {
   s.moveTo(0, 0.0); s.lineTo(side * 0.24, 0.0);
   for (let k = 0; k <= N; k++) { const y = 0.15 + (k / N) * 1.85; s.lineTo(side * t(y), y); }
   s.quadraticCurveTo(side * 0.03, 2.1, 0, 2.04); s.lineTo(0, 0);
-  const geo = new THREE.ExtrudeGeometry(s, { depth: 0.34, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2, curveSegments: 6 });
+  const geo = new THREE.ExtrudeGeometry(s, { depth: 0.34, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.025, bevelSegments: 3, curveSegments: 8 });
   geo.translate(0, 0, -0.17);
   g.add(new THREE.Mesh(geo, mat));
   for (let k = 0; k < 12; k++) g.add(mesh(box(0.014, 0.03, 0.34), M.darkMetal, side * 0.004, 0.5 + k * 0.12, 0));
-  const pul = mesh(cyl(0.3, 0.3, 0.14, 28), mat, 0, 0, side * 0.1); pul.rotation.x = Math.PI / 2; g.add(pul);
+  const pul = mesh(cyl(0.3, 0.3, 0.14, 40), mat, 0, 0, side * 0.1); pul.rotation.x = Math.PI / 2; g.add(pul);
   return g;
 }
 function buildWrist(withShaft) {
-  // 로컬 축: +Y = 기구 끝 방향. 피치 축 = X, 요·그립 축 = Z
   const root = new THREE.Group(), roll = new THREE.Group(); root.add(roll);
   const parts = {};
   if (withShaft) {
     const shaft = new THREE.Group();
-    shaft.add(mesh(cyl(0.5, 0.5, 9, 48), M.shaft, 0, -4.6, 0));
+    shaft.add(mesh(cyl(0.5, 0.5, 9, 64), M.shaft, 0, -4.6, 0));
     shaft.add(mesh(box(0.07, 8.8, 0.04), M.white, 0, -4.6, 0.49));
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 10, 48), M.tipMetal); band.rotation.x = Math.PI / 2; band.position.y = -0.1; shaft.add(band);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 12, 64), M.tipMetal); band.rotation.x = Math.PI / 2; band.position.y = -0.1; shaft.add(band);
     roll.add(shaft); parts.shaft = shaft;
   } else roll.add(mesh(cyl(0.5, 0.5, 0.3, 24), M.shaft, 0, -0.15, 0));
-  for (const s of [-1, 1]) roll.add(mesh(box(0.16, 1.0, 0.84), M.tipMetal, s * 0.37, 0.45, 0));
-  const pin1 = mesh(cyl(0.1, 0.1, 0.96, 16), M.darkMetal, 0, 0.72, 0); pin1.rotation.z = Math.PI / 2; roll.add(pin1);
+  for (const s of [-1, 1]) roll.add(rbox(0.16, 1.0, 0.84, 0.05, M.tipMetal, s * 0.37, 0.45, 0));
+  const pin1 = mesh(cyl(0.1, 0.1, 0.96, 20), M.darkMetal, 0, 0.72, 0); pin1.rotation.z = Math.PI / 2; roll.add(pin1);
   const pitch = new THREE.Group(); pitch.position.y = 0.72; roll.add(pitch);
   const pulley = new THREE.Group(); pitch.add(pulley);
-  const pul = mesh(cyl(0.33, 0.33, 0.56, 32), M.tipMetal); pul.rotation.z = Math.PI / 2; pulley.add(pul);
-  for (const x of [-0.14, 0.14]) { const gr = new THREE.Mesh(new THREE.TorusGeometry(0.335, 0.03, 8, 32), M.darkMetal); gr.rotation.y = Math.PI / 2; gr.position.x = x; pulley.add(gr); }
-  pitch.add(mesh(box(0.5, 0.62, 0.52), M.tipMetal, 0, 0.42, 0));
-  for (const s of [-1, 1]) pitch.add(mesh(box(0.56, 0.5, 0.12), M.tipMetal, 0, 0.88, s * 0.31));
-  const pin2 = mesh(cyl(0.09, 0.09, 0.76, 16), M.darkMetal, 0, 1.0, 0); pin2.rotation.x = Math.PI / 2; pitch.add(pin2);
+  const pul = mesh(cyl(0.33, 0.33, 0.56, 40), M.tipMetal); pul.rotation.z = Math.PI / 2; pulley.add(pul);
+  for (const x of [-0.14, 0.14]) { const gr = new THREE.Mesh(new THREE.TorusGeometry(0.335, 0.03, 10, 40), M.darkMetal); gr.rotation.y = Math.PI / 2; gr.position.x = x; pulley.add(gr); }
+  pitch.add(rbox(0.5, 0.62, 0.52, 0.06, M.tipMetal, 0, 0.42, 0));
+  for (const s of [-1, 1]) pitch.add(rbox(0.56, 0.5, 0.12, 0.04, M.tipMetal, 0, 0.88, s * 0.31));
+  const pin2 = mesh(cyl(0.09, 0.09, 0.76, 20), M.darkMetal, 0, 1.0, 0); pin2.rotation.x = Math.PI / 2; pitch.add(pin2);
   const jawPivot = new THREE.Group(); jawPivot.position.y = 1.0; pitch.add(jawPivot);
   const jawA = makeJaw(1, M.tipMetal), jawB = makeJaw(-1, M.tipMetal); jawPivot.add(jawA, jawB);
   Object.assign(parts, { pulley, pin1, pin2, jaws: jawPivot });
-  return {
-    root, roll, pitch, jawA, jawB, jawPivot, parts,
-    set(p, y, g, r) { roll.rotation.y = r; pitch.rotation.x = p; jawA.rotation.z = y - g / 2; jawB.rotation.z = y + g / 2; },
-  };
+  return { root, roll, pitch, jawA, jawB, jawPivot, parts, set(p, y, g, r) { roll.rotation.y = r; pitch.rotation.x = p; jawA.rotation.z = y - g / 2; jawB.rotation.z = y + g / 2; } };
 }
 
 // --- 환자 측 카트 ---
@@ -662,95 +832,107 @@ const cart = new THREE.Group(); cart.position.set(CART_X, 0, DOCK_Z); room.add(c
 const cartBase = new THREE.Group(); cart.add(cartBase);
 const wheels = [];
 {
-  const b = roundedBox(6.2, 1.1, 5.0, 0.9, M.shell); b.position.y = 0.95; cartBase.add(b);
-  cartBase.add(mesh(box(5.6, 0.45, 4.4), M.graphite, 0, 0.35, 0));
+  cartBase.add(rbox(6.2, 1.15, 5.0, 0.45, M.shell, 0, 1.0, 0));
+  cartBase.add(rbox(6.35, 0.22, 5.15, 0.1, M.graphite, 0, 0.5, 0));
+  cartBase.add(rbox(5.6, 0.45, 4.4, 0.15, M.graphite, 0, 0.32, 0));
   for (const [x, z] of [[2.3, 1.8], [-2.3, 1.8], [2.3, -1.8], [-2.3, -1.8]]) {
-    const w = mesh(cyl(0.34, 0.34, 0.3, 24), M.rubber, x, 0.34, z); w.rotation.z = Math.PI / 2; cartBase.add(w); wheels.push(w);
+    const w = new THREE.Group(); w.position.set(x, 0.34, z); cartBase.add(w); wheels.push(w);
+    const tire = mesh(cyl(0.34, 0.34, 0.3, 32), M.rubber); tire.rotation.z = Math.PI / 2; w.add(tire);
+    const hubc = mesh(cyl(0.2, 0.2, 0.32, 24), M.chrome); hubc.rotation.z = Math.PI / 2; w.add(hubc);
   }
-  cartBase.add(mesh(box(1.4, 0.06, 0.03), M.led, 0, 1.2, 2.55));
+  cartBase.add(mesh(box(2.2, 0.06, 0.03), M.led, 0, 1.25, 2.56));
 }
 tagPart('cart', cartBase);
 const column = new THREE.Group(); cart.add(column);
 {
-  const c = roundedBox(2.2, 17.4, 1.8, 0.55, M.shell); c.position.set(0, 1.5 + 8.7, 1.0); column.add(c);
-  column.add(mesh(box(1.1, 0.07, 0.03), M.led, 0, 5.0, 1.98));
-  // 뒤쪽 손잡이
+  column.add(rbox(2.2, 17.4, 1.8, 0.55, M.shell, 0, 10.2, 1.0));
+  for (const x of [-0.6, 0.6]) column.add(mesh(box(0.03, 15, 0.03), M.graphite, x, 10.2, 1.905));
+  column.add(mesh(box(0.06, 9.5, 0.03), M.led, 0, 10.6, 1.91));
+  column.add(rbox(1.7, 1.2, 0.12, 0.05, M.graphite, 0, 12, 0.08));
+  const scr = mesh(new THREE.PlaneGeometry(1.5, 1.0), M.ui, 0, 12, 0.015); scr.rotation.y = Math.PI; column.add(scr);
   column.add(mesh(box(0.25, 0.25, 1.1), M.graphite, -1.1, 8.6, -0.3), mesh(box(0.25, 0.25, 1.1), M.graphite, 1.1, 8.6, -0.3));
-  const h = mesh(cyl(0.13, 0.13, 2.6, 16), M.graphite, 0, 8.6, -0.9); h.rotation.z = Math.PI / 2; column.add(h);
+  const h = mesh(cyl(0.13, 0.13, 2.6, 20), M.graphite, 0, 8.6, -0.9); h.rotation.z = Math.PI / 2; column.add(h);
 }
 tagPart('column', column);
 const boomPivot = new THREE.Group(); boomPivot.position.set(0, COL_TOP, 1.0); cart.add(boomPivot);
 const boom = new THREE.Group(); boomPivot.add(boom);
 {
-  boom.add(mesh(cyl(1.05, 1.05, 0.9, 40), M.graphite, 0, 0.45, 0));
-  const bm = roundedBox(1.7, 1.15, BOOM_LEN + 1.2, 0.5, M.shell); bm.position.set(0, 1.0, BOOM_LEN / 2); boom.add(bm);
-  boom.add(mesh(box(0.06, 0.06, BOOM_LEN - 0.6), M.led, 0, 0.4, BOOM_LEN / 2));
+  boom.add(mesh(pillGeo(1.05, 0.9, 0.12), M.graphite, 0, 0.45, 0));
+  boom.add(rbox(1.7, 1.15, BOOM_LEN + 1.2, 0.5, M.shell, 0, 1.0, BOOM_LEN / 2));
+  boom.add(mesh(box(0.05, 0.05, BOOM_LEN - 0.6), M.led, 0, 0.42, BOOM_LEN / 2));
+  for (const s of [-1, 1]) boom.add(mesh(box(0.025, 0.025, BOOM_LEN), M.graphite, s * 0.86, 1.0, BOOM_LEN / 2));
 }
 tagPart('boom', boom);
 const platformPivot = new THREE.Group(); platformPivot.position.set(0, 0, BOOM_LEN); boomPivot.add(platformPivot);
 const platform = new THREE.Group(); platformPivot.add(platform);
 const MOUNT_X = [-2.25, -0.75, 0.75, 2.25], MOUNT_Y = -1.6;
 {
-  platform.add(mesh(cyl(0.85, 0.85, 0.9, 36), M.graphite, 0, -0.35, 0));
-  const pl = roundedBox(5.6, 0.7, 1.4, 0.45, M.shell); pl.position.y = -1.1; platform.add(pl);
-  for (const mx of MOUNT_X) platform.add(mesh(cyl(0.5, 0.5, 0.35, 28), M.graphite, mx, MOUNT_Y + 0.1, 0));
-  platform.add(mesh(box(4.6, 0.05, 0.03), M.led, 0, -1.1, 0.73));
+  platform.add(mesh(pillGeo(0.85, 0.9, 0.12), M.graphite, 0, -0.35, 0));
+  platform.add(rbox(5.6, 0.7, 1.4, 0.33, M.shell, 0, -1.1, 0));
+  for (const mx of MOUNT_X) platform.add(mesh(pillGeo(0.5, 0.35, 0.06), M.graphite, mx, MOUNT_Y + 0.1, 0));
+  platform.add(mesh(box(4.6, 0.05, 0.03), M.led, 0, -1.1, 0.71));
 }
 tagPart('platform', platform);
-addShadow(CART_X, DOCK_Z, 9, 8).userData.followCart = true;
 
 // --- 로봇 팔 4개 ---
 const PORT_X = [-0.6, 0.35, 1.3, 2.25], PORT_Z = 0.25, CAM = 2;
 const PORTS = PORT_X.map((x) => V(x, skinY(x, PORT_Z), PORT_Z));
 const L1 = 3.3, L2 = 3.1, SPAR_B = 1.3, SPAR_LEN = 5.6, SPAR_OFF = 0.8, L_SHAFT = 4.9, TIP_LEN = 0.3, WS = 0.08;
+const LINK1_GEO = linkGeo(0.74, 0.92, 0.3), LINK2_GEO = linkGeo(0.62, 0.8, 0.26);
 const arms = [];
 function makeArm(i) {
   const cam = i === CAM; const a = { i, cam };
-  a.jointA = mesh(cyl(0.55, 0.55, 1.15), M.graphite);
-  a.link1 = mesh(cyl(0.4, 0.46, 1, 28), M.shell);
+  a.jointA = new THREE.Group(); a.jointA.add(mesh(pillGeo(0.56, 1.15, 0.12), M.graphite), mesh(cyl(0.36, 0.36, 1.2, 32), M.metal));
+  a.link1 = new THREE.Mesh(LINK1_GEO, M.shell);
+  a.link1.add(mesh(box(0.025, 0.78, 0.5), M.graphite, 0.375, 0, 0), mesh(box(0.025, 0.78, 0.5), M.graphite, -0.375, 0, 0));
   a.jointE = new THREE.Group();
-  a.jointE.add(mesh(cyl(0.54, 0.54, 1.05), M.graphite));
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.555, 0.035, 8, 40), M.led); ring.rotation.x = Math.PI / 2; a.jointE.add(ring);
-  a.link2 = mesh(cyl(0.33, 0.4, 1, 28), M.shell);
-  a.jointS = mesh(cyl(0.45, 0.45, 0.95), M.graphite);
+  a.jointE.add(mesh(pillGeo(0.55, 1.08, 0.12), M.graphite));
+  for (const y of [-0.36, 0.36]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.556, 0.028, 10, 48), M.led); ring.rotation.x = Math.PI / 2; ring.position.y = y; a.jointE.add(ring); }
+  a.link2 = new THREE.Mesh(LINK2_GEO, M.shell);
+  a.link2.add(mesh(box(0.025, 0.78, 0.42), M.graphite, 0.315, 0, 0), mesh(box(0.025, 0.78, 0.42), M.graphite, -0.315, 0, 0));
+  a.jointS = new THREE.Group(); a.jointS.add(mesh(pillGeo(0.46, 0.96, 0.1), M.graphite), mesh(cyl(0.3, 0.3, 1.0, 32), M.metal));
   a.spar = new THREE.Group();
-  a.spar.add(mesh(box(0.5, SPAR_LEN, 0.8), M.shell));
+  a.spar.add(rbox(0.5, SPAR_LEN, 0.82, 0.16, M.shell));
   a.spar.add(mesh(box(0.06, SPAR_LEN * 0.9, 0.34), M.graphite, -0.26, 0, 0));
-  a.spar.add(mesh(box(0.56, 0.35, 0.86), M.graphite, 0, SPAR_LEN / 2, 0));   // 아래쪽(+Y = 몸 쪽) 끝
+  for (const s of [-1, 1]) a.spar.add(mesh(box(0.03, SPAR_LEN * 0.8, 0.03), M.led, 0.06, 0, s * 0.415));
+  a.spar.add(rbox(0.58, 0.4, 0.9, 0.12, M.graphite, 0, SPAR_LEN / 2, 0));
   a.drive = new THREE.Group();
-  a.drive.add(mesh(box(0.4, 1.7, 0.88), M.graphite));
-  a.drive.add(mesh(box(0.06, 1.25, 0.74), M.shellDim, -0.23, 0, 0));
-  a.inst = new THREE.Group();   // 원점 = 하우징 아래 끝, +Y = 몸 안 방향
+  a.drive.add(rbox(0.42, 1.7, 0.9, 0.12, M.graphite));
+  a.drive.add(rbox(0.07, 1.25, 0.76, 0.03, M.shellDim, -0.23, 0, 0));
+  for (const [y, z] of [[0.7, 0.3], [0.7, -0.3], [-0.7, 0.3], [-0.7, -0.3]]) { const sc = mesh(cyl(0.04, 0.04, 0.03, 12), M.chrome, 0.22, y, z); sc.rotation.z = Math.PI / 2; a.drive.add(sc); }
+  a.inst = new THREE.Group();
   if (cam) {
-    a.inst.add(mesh(box(0.6, 1.05, 0.64), M.camHead, 0, -0.55, 0));
-    const cable = mesh(cyl(0.09, 0.09, 1.4, 12), M.rubber, 0, -1.6, -0.15); cable.rotation.x = 0.5; a.inst.add(cable);
-    const shaft = mesh(cyl(0.05, 0.05, L_SHAFT + TIP_LEN, 20), M.shaft, 0, (L_SHAFT + TIP_LEN) / 2, 0); a.inst.add(shaft);
-    const lens = mesh(cyl(0.045, 0.045, 0.01, 20), M.glass, 0, L_SHAFT + TIP_LEN + 0.004, 0); a.inst.add(lens);
+    a.inst.add(rbox(0.62, 1.08, 0.66, 0.16, M.camHead, 0, -0.55, 0));
+    const ringC = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.025, 8, 32), M.led); ringC.position.set(0, -0.6, 0.335); a.inst.add(ringC);
+    const cable = mesh(cyl(0.09, 0.09, 1.4, 16), M.rubber, 0, -1.6, -0.15); cable.rotation.x = 0.5; a.inst.add(cable);
+    const shaft = mesh(cyl(0.05, 0.05, L_SHAFT + TIP_LEN, 24), M.shaft, 0, (L_SHAFT + TIP_LEN) / 2, 0); a.inst.add(shaft);
+    const lens = mesh(cyl(0.045, 0.045, 0.01, 24), M.glass, 0, L_SHAFT + TIP_LEN + 0.004, 0); a.inst.add(lens);
     enableInside(shaft); enableInside(lens);
   } else {
-    a.inst.add(mesh(box(0.46, 1.15, 0.72), M.housing, 0, -0.58, 0));
-    a.inst.add(mesh(box(0.47, 0.16, 0.2), M.tab, 0, -0.95, 0.3));
-    const shaft = mesh(cyl(0.04, 0.04, L_SHAFT, 16), M.shaft, 0, L_SHAFT / 2, 0); a.inst.add(shaft); enableInside(shaft);
+    a.inst.add(rbox(0.46, 1.15, 0.72, 0.12, M.housing, 0, -0.58, 0));
+    a.inst.add(rbox(0.48, 0.18, 0.22, 0.05, M.tab, 0, -0.95, 0.3));
+    for (let k = 0; k < 4; k++) { const d = mesh(cyl(0.09, 0.09, 0.02, 20), M.darkMetal, -0.235, -0.95 + k * 0.25, 0); d.rotation.z = Math.PI / 2; a.inst.add(d); }
+    const shaft = mesh(cyl(0.04, 0.04, L_SHAFT, 20), M.shaft, 0, L_SHAFT / 2, 0); a.inst.add(shaft); enableInside(shaft);
     a.wrist = buildWrist(false); a.wrist.root.scale.setScalar(WS); a.wrist.root.position.y = L_SHAFT; a.inst.add(a.wrist.root); enableInside(a.wrist.root);
   }
-  a.cannula = new THREE.Group();   // 원점 = 포트(원격 운동 중심), +Y = 몸 안 방향
-  const tube = mesh(cyl(0.075, 0.075, 1.5, 20), M.cannula, 0, -0.25, 0); a.cannula.add(tube); enableInside(tube);
-  a.cannula.add(mesh(cyl(0.17, 0.15, 0.3, 24), M.cannula, 0, -1.1, 0));
-  a.cannula.add(mesh(box(SPAR_OFF, 0.22, 0.34), M.graphite, SPAR_OFF / 2, -1.2, 0));
+  a.cannula = new THREE.Group();
+  const tube = mesh(cyl(0.075, 0.075, 1.5, 24), M.cannula, 0, -0.25, 0); a.cannula.add(tube); enableInside(tube);
+  a.cannula.add(mesh(pillGeo(0.17, 0.3, 0.05, 32), M.cannula, 0, -1.1, 0));
+  const cr = new THREE.Mesh(new THREE.TorusGeometry(0.172, 0.018, 8, 32), M.led); cr.position.y = -0.98; cr.rotation.x = Math.PI / 2; a.cannula.add(cr);
+  a.cannula.add(rbox(SPAR_OFF, 0.22, 0.34, 0.06, M.graphite, SPAR_OFF / 2, -1.2, 0));
   room.add(a.jointA, a.link1, a.jointE, a.link2, a.jointS, a.spar, a.drive, a.inst, a.cannula);
   tagPart('setup', a.jointA); tagPart('setup', a.link1);
   tagPart('manip', a.jointE); tagPart('manip', a.link2); tagPart('manip', a.jointS);
   tagPart('spar', a.spar); tagPart('drive', a.drive); tagPart(cam ? 'endoscope' : 'instrument', a.inst); tagPart('cannula', a.cannula);
-  a.rcm = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.025, 8, 36), M.led); a.rcm.visible = false; room.add(a.rcm);
+  a.rcm = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.025, 8, 36), M.led); a.rcm.visible = false; a.rcm.userData.noShadowCast = true; room.add(a.rcm);
   return a;
 }
 for (let i = 0; i < 4; i++) arms.push(makeArm(i));
 
-// 바늘 + 봉합사 (오른손 기구)
 const needle = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.06, 8, 40, Math.PI * 1.15), T.needle);
 needle.rotation.x = Math.PI / 2; needle.position.set(-0.9, 1.55, 0);
 arms[3].wrist.jawPivot.add(needle); needle.layers.enable(2);
-const thread = new THREE.Mesh(new THREE.BufferGeometry(), T.suture); thread.layers.set(2); room.add(thread);
+const thread = new THREE.Mesh(new THREE.BufferGeometry(), T.suture); thread.layers.set(2); thread.userData.noShadowCast = true; room.add(thread);
 const STITCH = V(0.98, 9.905, 0.45);
 
 // --- 서전 콘솔 ---
@@ -758,53 +940,107 @@ const consoleG = new THREE.Group(); consoleG.position.set(-15.4, 0, 3.4); consol
 const masters = [];
 const viewer = new THREE.Group(), pedals = new THREE.Group();
 {
-  consoleG.add(mesh(box(5.8, 0.7, 6.4), M.graphite, 0, 0.35, 0));
-  const tower = roundedBox(5.2, 9.6, 2.6, 0.5, M.shell); tower.position.set(0, 5.4, -1.8); consoleG.add(tower);
-  const upper = roundedBox(5.0, 2.2, 4.2, 0.6, M.shell); upper.position.set(0, 11.0, -0.4); consoleG.add(upper);
-  consoleG.add(mesh(box(4.4, 2.2, 2.2), M.graphite, 0, 9.2, 0.6));
+  consoleG.add(rbox(5.8, 0.7, 6.4, 0.25, M.graphite, 0, 0.35, 0));
+  consoleG.add(rbox(5.2, 9.6, 2.6, 0.55, M.shell, 0, 5.4, -1.8));
+  consoleG.add(rbox(5.0, 2.2, 4.2, 0.6, M.shell, 0, 11.0, -0.4));
+  consoleG.add(rbox(4.4, 2.2, 2.2, 0.3, M.graphite, 0, 9.2, 0.6));
+  consoleG.add(mesh(box(4.2, 0.04, 0.03), M.led, 0, 9.95, 1.71));
   viewer.position.set(0, 12.7, 0.5); viewer.rotation.x = 0.22; consoleG.add(viewer);
-  const vh = roundedBox(4.4, 1.9, 3.2, 0.5, M.shell); viewer.add(vh);
-  viewer.add(mesh(box(2.8, 0.95, 0.7), M.graphite, 0, -0.1, 1.75));
-  for (const s of [-1, 1]) { const e = mesh(cyl(0.27, 0.27, 0.12, 24), M.glass, s * 0.58, -0.1, 2.12); e.rotation.x = Math.PI / 2; viewer.add(e); }
-  viewer.add(mesh(box(2.2, 0.32, 0.3), M.pad, 0, 0.55, 1.85));
-  const rest = mesh(cyl(0.3, 0.3, 4.6, 20), M.pad, 0, 7.8, 2.7); rest.rotation.z = Math.PI / 2; consoleG.add(rest);
-  for (const s of [-1, 1]) consoleG.add(mesh(box(0.3, 1.2, 0.5), M.graphite, s * 2.2, 7.3, 2.5));
+  viewer.add(rbox(4.4, 1.9, 3.2, 0.5, M.shell));
+  viewer.add(rbox(2.8, 0.95, 0.7, 0.25, M.graphite, 0, -0.1, 1.75));
+  for (const s of [-1, 1]) { const e = mesh(cyl(0.27, 0.27, 0.12, 32), M.eyepiece, s * 0.58, -0.1, 2.12); e.rotation.x = Math.PI / 2; viewer.add(e); }
+  viewer.add(rbox(2.2, 0.32, 0.3, 0.12, M.pad, 0, 0.55, 1.85));
+  const rest = mesh(cyl(0.3, 0.3, 4.6, 32), M.pad, 0, 7.8, 2.7); rest.rotation.z = Math.PI / 2; consoleG.add(rest);
+  for (const s of [-1, 1]) consoleG.add(rbox(0.3, 1.2, 0.5, 0.1, M.graphite, s * 2.2, 7.3, 2.5));
+  const tp = rbox(1.5, 0.08, 1.0, 0.03, M.graphite, 0, 8.25, 2.55); tp.rotation.x = -0.4; consoleG.add(tp);
+  const tps = mesh(new THREE.PlaneGeometry(1.35, 0.85), M.ui, 0, 8.3, 2.57); tps.rotation.x = -Math.PI / 2 - 0.4; consoleG.add(tps);
   for (const s of [-1, 1]) {
     const m = { side: s, base: V(s * 0.95, 9.0, 2.0) };
-    m.arm = mesh(cyl(0.07, 0.07, 1, 10), M.graphite); consoleG.add(m.arm);
+    m.arm = mesh(cyl(0.07, 0.07, 1, 12), M.metal); consoleG.add(m.arm);
     m.gimbal = new THREE.Group(); consoleG.add(m.gimbal);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 8, 28), M.graphite); m.gimbal.add(ring);
-    m.loopA = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.028, 8, 20), M.metal); m.loopA.position.set(0.05, -0.05, 0.22); m.gimbal.add(m.loopA);
-    m.loopB = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.028, 8, 20), M.metal); m.loopB.position.set(-0.05, -0.05, 0.22); m.gimbal.add(m.loopB);
+    m.gimbal.add(new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 10, 32), M.graphite));
+    m.loopA = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.028, 10, 24), M.chrome); m.loopA.position.set(0.05, -0.05, 0.22); m.gimbal.add(m.loopA);
+    m.loopB = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.028, 10, 24), M.chrome); m.loopB.position.set(-0.05, -0.05, 0.22); m.gimbal.add(m.loopB);
     masters.push(m);
   }
-  pedals.add(mesh(box(4.6, 0.25, 1.7), M.graphite, 0, 0.82, 2.4));
-  [0x2f6cae, 0xd9b23a, 0x6d747c, 0x6d747c].forEach((c, k) => {
-    pedals.add(mesh(box(0.75, 0.14, 1.05), M.pad, -1.65 + k * 1.1, 1.02, 2.4));
-    pedals.add(mesh(box(0.5, 0.03, 0.3), new THREE.MeshStandardMaterial({ color: c, roughness: 0.5 }), -1.65 + k * 1.1, 1.1, 2.2));
+  pedals.add(rbox(4.6, 0.25, 1.7, 0.08, M.graphite, 0, 0.82, 2.4));
+  [M.tab, M.yellow, M.darkMetal, M.darkMetal].forEach((mat, k) => {
+    pedals.add(rbox(0.75, 0.14, 1.05, 0.05, M.pad, -1.65 + k * 1.1, 1.02, 2.4));
+    pedals.add(rbox(0.5, 0.03, 0.3, 0.012, mat, -1.65 + k * 1.1, 1.1, 2.2));
   });
   consoleG.add(pedals);
 }
 tagPart('viewer', viewer); tagPart('pedals', pedals);
 masters.forEach((m) => { tagPart('masters', m.arm); tagPart('masters', m.gimbal); });
 tagPart('console', consoleG);
-addShadow(-15.4, 3.4, 9, 9);
 
 // --- 비전 카트 ---
 const vision = new THREE.Group(); vision.position.set(13.8, 0, -5.5); vision.rotation.y = -0.55; room.add(vision);
 {
-  vision.add(mesh(box(3.8, 0.6, 3.1), M.graphite, 0, 0.45, 0));
-  const tw = roundedBox(3.4, 9.0, 2.8, 0.4, M.shell); tw.position.y = 5.3; vision.add(tw);
+  vision.add(rbox(3.8, 0.6, 3.1, 0.15, M.graphite, 0, 0.45, 0));
+  vision.add(rbox(3.4, 9.0, 2.8, 0.4, M.shell, 0, 5.3, 0));
   for (let k = 0; k < 3; k++) {
-    vision.add(mesh(box(2.9, 1.3, 0.08), M.graphite, 0, 3.0 + k * 2.1, 1.45));
-    vision.add(mesh(box(0.25, 0.08, 0.03), M.led, 1.1, 3.3 + k * 2.1, 1.5));
+    vision.add(rbox(2.9, 1.3, 0.1, 0.04, M.graphite, 0, 3.0 + k * 2.1, 1.43));
+    vision.add(mesh(box(0.25, 0.08, 0.03), k === 1 ? M.ledWarm : M.led, 1.1, 3.3 + k * 2.1, 1.5));
   }
-  vision.add(mesh(cyl(0.18, 0.18, 3.0, 16), M.metal, 0, 11.2, 0));
-  vision.add(mesh(box(6.2, 3.7, 0.3), M.graphite, 0, 14.2, 0.1));
+  vision.add(mesh(cyl(0.18, 0.18, 3.0, 20), M.metal, 0, 11.2, 0));
+  vision.add(rbox(6.2, 3.7, 0.3, 0.1, M.graphite, 0, 14.2, 0.1));
   vision.add(mesh(new THREE.PlaneGeometry(5.8, 3.3), M.screen, 0, 14.2, 0.26));
 }
 tagPart('vision', vision);
-addShadow(13.8, -5.5, 6, 5);
+
+// --- 마취기 + 감시 모니터 ---
+const anesthesia = new THREE.Group(); anesthesia.position.set(-12.2, 0, -5.4); anesthesia.rotation.y = 0.45; room.add(anesthesia);
+{
+  anesthesia.add(rbox(4.2, 0.8, 3.4, 0.2, M.graphite, 0, 0.5, 0));
+  anesthesia.add(rbox(3.8, 8.6, 3.0, 0.35, M.shellDim, 0, 5.2, 0));
+  anesthesia.add(rbox(4.2, 0.3, 3.4, 0.1, M.shell, 0, 7.6, 0.2));
+  for (const [x, mat] of [[-1.2, M.yellow], [-0.4, M.purple]]) anesthesia.add(rbox(0.6, 1.4, 0.8, 0.15, mat, x, 10.2, 1.1));
+  for (const [x, mat] of [[1.1, M.gasGreen], [1.6, M.gasWhite]]) anesthesia.add(mesh(cyl(0.3, 0.3, 4.5, 24), mat, x, 3.2, -1.7));
+  anesthesia.add(mesh(cyl(0.55, 0.55, 1.5, 32), M.bag, 1.3, 8.6, 1.2));
+  anesthesia.add(mesh(cyl(0.12, 0.12, 4, 16), M.metal, 0, 11.4, -0.6));
+  anesthesia.add(rbox(4.6, 3.0, 0.32, 0.12, M.graphite, 0, 13.6, -0.3));
+  anesthesia.add(mesh(new THREE.PlaneGeometry(4.3, 2.7), M.vitals, 0, 13.6, -0.13));
+}
+tagPart('anesthesia', anesthesia);
+room.updateMatrixWorld(true);
+{
+  const p0 = anesthesia.localToWorld(V(-1.6, 7.4, 1.4));
+  for (const dz of [-0.25, 0.25]) {
+    const c = new THREE.CatmullRomCurve3([p0.clone().add(V(0, 0, dz)), V(-10.5, 6.5, -2.2 + dz), V(-8.2, 9.8, -0.6 + dz), V(-7.1, 10.6, dz * 0.4)]);
+    room.add(new THREE.Mesh(new THREE.TubeGeometry(c, 60, 0.12, 12), M.hose));
+  }
+}
+// --- 링거 폴 ---
+{
+  const iv = new THREE.Group(); iv.position.set(-9.2, 0, 4.4); room.add(iv);
+  for (let k = 0; k < 5; k++) { const leg = mesh(box(1.4, 0.12, 0.18), M.chrome); const a = (k / 5) * Math.PI * 2; leg.position.set(Math.cos(a) * 0.7, 0.35, Math.sin(a) * 0.7); leg.rotation.y = -a; iv.add(leg); }
+  iv.add(mesh(cyl(0.07, 0.07, 18, 16), M.chrome, 0, 9.3, 0));
+  iv.add(mesh(box(1.8, 0.07, 0.07), M.chrome, 0, 18.2, 0));
+  iv.add(rbox(1.0, 1.7, 0.32, 0.15, M.bag, 0.6, 16.9, 0));
+  room.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(-8.6, 16, 4.4), V(-8, 12, 4.0), V(-6.6, 10.4, 3.0), V(-4.2, 10.0, 2.4)]), 50, 0.035, 8), M.hose));
+}
+// --- 기구 트레이 ---
+{
+  const tray = new THREE.Group(); tray.position.set(7.2, 0, 6.2); tray.rotation.y = -0.3; room.add(tray);
+  tray.add(rbox(3.2, 0.25, 2.4, 0.1, M.chrome, 0, 0.3, 0));
+  tray.add(mesh(cyl(0.12, 0.12, 10, 16), M.chrome, -1.2, 5.3, 0));
+  tray.add(rbox(4.4, 0.16, 2.8, 0.07, M.chrome, 0.2, 10.3, 0));
+  tray.add(rbox(4.6, 0.06, 3.0, 0.025, M.drapeBlue, 0.2, 10.42, 0));
+  for (let k = 0; k < 5; k++) {
+    const ins = new THREE.Group(); ins.position.set(-1.2 + k * 0.6, 10.5, -0.2 + (k % 2) * 0.3); ins.rotation.y = 0.2 * (k - 2); tray.add(ins);
+    ins.add(mesh(box(0.06, 0.04, 1.6), M.metal, 0, 0, 0.2));
+    for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 8, 20), M.metal); r.rotation.x = Math.PI / 2; r.position.set(s * 0.12, 0, -0.75); ins.add(r); }
+  }
+  tray.add(mesh(new THREE.LatheGeometry([[0, 0], [0.5, 0.02], [0.6, 0.25], [0.62, 0.3]].map(([x, y]) => new THREE.Vector2(x, y)), 40), M.chrome, 1.6, 10.5, 0.6));
+}
+// --- 바닥 케이블 ---
+const cartCable = new THREE.Mesh(new THREE.BufferGeometry(), M.rubber); room.add(cartCable);
+{
+  const c = new THREE.CatmullRomCurve3([consoleG.localToWorld(V(1.5, 0.4, -2.6)), V(-8, 0.1, -9), V(4, 0.1, -13.5), vision.localToWorld(V(-1, 0.4, -1))]);
+  room.add(new THREE.Mesh(new THREE.TubeGeometry(c, 80, 0.12, 10), M.rubber));
+}
+let cableZ = null;
 
 /* ================================================================
    자세 계산 (도킹 · 원격 조종 · 분해)
@@ -819,14 +1055,15 @@ function solveElbow(A, S, l1, l2, pole) {
   if (perp.lengthSq() < 1e-6) perp.set(0, 1, 0).addScaledVector(dir, -dir.y);
   return A.clone().addScaledVector(dir, a).addScaledVector(perp.normalize(), h);
 }
-function placeSeg(m, a, b) {
-  const d = b.clone().sub(a); const L = d.length();
-  m.position.copy(a).addScaledVector(d, 0.5); m.scale.set(1, Math.max(L, 1e-3), 1);
-  m.quaternion.setFromUnitVectors(Y_AXIS, d.divideScalar(L || 1));
+// 링크: 로컬 Y = 링크 방향, 로컬 Z = 관절 축 (평평한 면이 항상 같은 쪽을 보게)
+function placeLink(m, a, b, n) {
+  const y = b.clone().sub(a); const L = y.length(); y.divideScalar(L || 1);
+  const z = n.clone().addScaledVector(y, -n.dot(y)); if (z.lengthSq() < 1e-6) z.set(1, 0, 0); z.normalize();
+  const x = y.clone().cross(z);
+  m.position.copy(a).addScaledVector(y, L / 2); m.quaternion.setFromRotationMatrix(_m4.makeBasis(x, y, z)); m.scale.set(1, Math.max(L, 1e-3), 1);
 }
 function placeJoint(m, p, axis) { m.position.copy(p); m.quaternion.setFromUnitVectors(Y_AXIS, axis); }
 
-// 분해: 부품 종류마다 따로 움직이는 정도 (0~1)
 const EX_ORDER = { base: 0, column: 0.08, boom: 0.16, platform: 0.24, setup: 0.34, manip: 0.44, cannula: 0.5, spar: 0.56, drive: 0.66, inst: 0.8 };
 const exV = Object.fromEntries(Object.keys(EX_ORDER).map((k) => [k, 0]));
 const exV0 = { ...exV };
@@ -844,17 +1081,15 @@ function armOffset(a, type, u) {
   return V();
 }
 
-// 손끝 목표 (기본 자세)
 const REST = [W.clone().add(V(-0.72, 0.06, -0.22)), W.clone().add(V(-0.3, 0.12, 0.02)), W.clone(), W.clone().add(V(0.28, 0.12, 0))];
 const SCOPE_DEPTH = 0.5;
 const state = {
   mode: 'room', rotating: false, exploded: false, selected: null, tween: null, userMoved: false, vo: { x: 0, y: 0 },
-  dock: { t: reduced ? 1 : 0, from: 0, to: 1, start: 0, dur: 0.01, playing: false, phase: '' },
+  dock: { t: reduced ? 1 : 0, from: 0, to: 1, start: 0, dur: 0.01, playing: false },
   ex: { to: 0, start: 0, dur: 0.01 },
   tele: { on: false, t: 0, scale: 3, filter: true, elapsed: 0 },
   wrist: { p: 0, y: 0, g: 20, r: 0, tp: 0, ty: 0, tg: 20, tr: 0, demo: null },
 };
-
 function teleTargets(t) {
   const s = state.tele, A = 0.3, ph = t * 1.5, k = 1 / s.scale;
   const tr = (f1, f2, f3, o) => V(Math.sin(2 * Math.PI * f1 * t + o), Math.sin(2 * Math.PI * f2 * t + o * 2), Math.sin(2 * Math.PI * f3 * t + o * 3)).multiplyScalar(0.05);
@@ -863,37 +1098,35 @@ function teleTargets(t) {
   const trR = tr(9.3, 10.7, 8.1, 0.3), trL = tr(8.7, 9.9, 11.2, 1.1);
   const tipR = handR.clone().add(s.filter ? V() : trR).multiplyScalar(k);
   const tipL = handL.clone().add(s.filter ? V() : trL).multiplyScalar(k);
-  return {
-    handR: handR.add(trR), handL: handL.add(trL), tipR, tipL,
-    rollR: Math.sin(ph) * 1.1, gripR: 0.08 + 0.55 * Math.pow(Math.max(0, Math.sin(ph * 0.5)), 6), gripL: 0.06,
-  };
+  return { handR: handR.add(trR), handL: handL.add(trL), tipR, tipL, rollR: Math.sin(ph) * 1.1, gripR: 0.08 + 0.55 * Math.pow(Math.max(0, Math.sin(ph * 0.5)), 6), gripL: 0.06 };
 }
 
 const armState = arms.map(() => ({ P: V(), d: V(0, -1, 0), depth: 0.1 }));
-function poseRoom(t) {
+function poseRoom() {
   const dk = state.dock.t;
-  // 1) 카트 이동
   const drive = easeInOut(seg(dk, 0, 0.28));
   const z = lerp(AWAY_Z, DOCK_Z, drive);
-  const travelled = z - AWAY_Z; for (const w of wheels) w.rotation.x = travelled / 0.34;
+  for (const w of wheels) w.rotation.x = (z - AWAY_Z) / 0.34;
   cart.position.z = z;
-  // 2) 붐 회전
   const sw = easeInOut(seg(dk, 0.26, 0.45));
   boomPivot.rotation.y = lerp(Math.PI / 2, 0, sw);
   platformPivot.rotation.y = lerp(-Math.PI / 2, 0, sw);
-  // 분해 오프셋 (카트 쪽)
   cartBase.position.set(0, 0, -3.4 * exV.base);
   column.position.set(0, 0, -1.6 * exV.column);
   boom.position.set(0, 3.6 * exV.boom, -0.4 * exV.boom);
   platform.position.set(0, 1.8 * exV.platform, 0.3 * exV.platform);
   room.updateMatrixWorld(true);
-  for (const sh of room.children) if (sh.userData.followCart) sh.position.z = z;
-
+  if (cableZ !== z - 3.4 * exV.base) {
+    cableZ = z - 3.4 * exV.base;
+    const a0 = cartBase.localToWorld(V(-1.8, 0.5, -2.6));
+    const c = new THREE.CatmullRomCurve3([a0, a0.clone().add(V(0.2, -0.38, -1.2)), V(6, 0.1, -12.5), vision.localToWorld(V(-1.2, 0.4, -0.6))]);
+    cartCable.geometry.dispose(); cartCable.geometry = new THREE.TubeGeometry(c, 70, 0.12, 10);
+  }
   const unfold = easeInOut(seg(dk, 0.43, 0.74)), descend = easeInOut(seg(dk, 0.72, 0.88)), insert = easeInOut(seg(dk, 0.86, 1));
   const tele = state.tele.on ? teleTargets(state.tele.t) : null;
   for (const a of arms) {
     const st = armState[a.i];
-    let target = REST[a.i].clone();
+    const target = REST[a.i].clone();
     if (tele && a.i === 3) target.add(tele.tipR);
     if (tele && a.i === 1) target.add(tele.tipL);
     const port = PORTS[a.i];
@@ -901,31 +1134,30 @@ function poseRoom(t) {
     const S0 = platform.localToWorld(V(MOUNT_X[a.i] * 0.95, MOUNT_Y - 5.9, 0.3));
     const stowP = S0.clone().add(V(0, -(SPAR_B + SPAR_LEN + 0.3), SPAR_OFF));
     const hoverP = port.clone().add(V(0, 2.4, 0));
-    const P = stowP.clone().lerp(hoverP, unfold).add(V(0, Math.sin(Math.PI * unfold) * 1.4, 0)).lerp(port, descend);
+    const Pp = stowP.clone().lerp(hoverP, unfold).add(V(0, Math.sin(Math.PI * unfold) * 1.4, 0)).lerp(port, descend);
     const d = V(0, -1, 0).lerp(dockD, unfold).normalize();
     const full = a.cam ? SCOPE_DEPTH : target.distanceTo(port);
     const depth = lerp(0.05, full, insert);
-    st.P.copy(P); st.d.copy(d); st.depth = depth;
-
+    st.P.copy(Pp); st.d.copy(d); st.depth = depth;
     _u.copy(d).negate();
     _o.set(0, 0, -1).addScaledVector(d, d.z); if (_o.lengthSq() < 1e-4) _o.set(1, 0, 0); _o.normalize();
     const q = instQuat(d, _o, new THREE.Quaternion());
     const offC = armOffset(a, 'cannula', _u), offS = armOffset(a, 'spar', _u), offD = armOffset(a, 'drive', _u), offI = armOffset(a, 'inst', _u);
     const offSet = armOffset(a, 'setup', _u), offM = armOffset(a, 'manip', _u);
-    a.cannula.position.copy(P).add(offC); a.cannula.quaternion.copy(q);
-    a.spar.position.copy(P).addScaledVector(_u, SPAR_B + SPAR_LEN / 2).addScaledVector(_o, SPAR_OFF).add(offS); a.spar.quaternion.copy(q);
+    a.cannula.position.copy(Pp).add(offC); a.cannula.quaternion.copy(q);
+    a.spar.position.copy(Pp).addScaledVector(_u, SPAR_B + SPAR_LEN / 2).addScaledVector(_o, SPAR_OFF).add(offS); a.spar.quaternion.copy(q);
     const hb = L_SHAFT + TIP_LEN - depth;
-    a.inst.position.copy(P).addScaledVector(_u, hb).add(offI); a.inst.quaternion.copy(q);
-    a.drive.position.copy(P).addScaledVector(_u, hb + 0.8).addScaledVector(_o, 0.42).add(offD); a.drive.quaternion.copy(q);
-    const S = P.clone().addScaledVector(_u, SPAR_B + SPAR_LEN + 0.3).addScaledVector(_o, SPAR_OFF);
+    a.inst.position.copy(Pp).addScaledVector(_u, hb).add(offI); a.inst.quaternion.copy(q);
+    a.drive.position.copy(Pp).addScaledVector(_u, hb + 0.8).addScaledVector(_o, 0.42).add(offD); a.drive.quaternion.copy(q);
+    const S = Pp.clone().addScaledVector(_u, SPAR_B + SPAR_LEN + 0.3).addScaledVector(_o, SPAR_OFF);
     const A = platform.localToWorld(V(MOUNT_X[a.i], MOUNT_Y, 0));
     const pole = V(Math.sign(MOUNT_X[a.i]) * 0.4, 1, -1).lerp(V(0, -0.2, 1), 1 - unfold).normalize();
     const E = solveElbow(A, S, L1, L2, pole);
     _n.crossVectors(E.clone().sub(A), S.clone().sub(E)); if (_n.lengthSq() < 1e-6) _n.set(1, 0, 0); _n.normalize();
     placeJoint(a.jointA, A.clone().add(offSet), _n);
-    placeSeg(a.link1, A.clone().add(offSet), E.clone().add(offSet));
+    placeLink(a.link1, A.clone().add(offSet), E.clone().add(offSet), _n);
     placeJoint(a.jointE, E.clone().add(offM), _n);
-    placeSeg(a.link2, E.clone().add(offM), S.clone().add(offS));
+    placeLink(a.link2, E.clone().add(offM), S.clone().add(offS), _n);
     placeJoint(a.jointS, S.clone().add(offS), _n);
     a.rcm.position.copy(port).add(V(0, 0.03, 0)); a.rcm.quaternion.setFromUnitVectors(V(0, 0, 1), V(0, 1, 0));
     if (a.wrist) {
@@ -934,21 +1166,18 @@ function poseRoom(t) {
       else a.wrist.set(a.i === 0 ? 0.5 : 0.2, a.i === 1 ? -0.25 : 0.2, 0.1, a.i === 0 ? 1.2 : 0.4);
     }
   }
-  // 봉합사
   if (insert > 0.99 && state.ex.to === 0) {
-    const tail = V(0.9, 0, 0).applyAxisAngle(V(0, 0, 1), Math.PI * 1.15); // 바늘 끝(실 쪽)
     needle.updateWorldMatrix(true, false);
-    const p = needle.localToWorld(tail.clone());
+    const p = needle.localToWorld(V(0.9, 0, 0).applyAxisAngle(V(0, 0, 1), Math.PI * 1.15));
     const mid = p.clone().lerp(STITCH, 0.5).add(V(0, -0.05, 0.04));
-    thread.geometry.dispose();
-    thread.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([p, mid, STITCH]), 20, 0.0045, 5, false);
+    thread.geometry.dispose(); thread.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([p, mid, STITCH]), 20, 0.0045, 5, false);
     thread.visible = true;
   } else thread.visible = false;
-  // 콘솔 마스터
   for (const m of masters) {
     const hd = tele ? (m.side > 0 ? tele.handR : tele.handL) : V();
     const H = m.base.clone().add(V(hd.x, hd.y, -hd.z));
-    placeSeg(m.arm, V(m.side * 0.9, 9.9, 0.2), H);
+    const a0 = V(m.side * 0.9, 9.9, 0.2), dir = H.clone().sub(a0);
+    m.arm.position.copy(a0).addScaledVector(dir, 0.5); m.arm.scale.y = dir.length(); m.arm.quaternion.setFromUnitVectors(Y_AXIS, dir.normalize());
     m.gimbal.position.copy(H);
     const g = tele ? (m.side > 0 ? tele.gripR : tele.gripL) : 0.2;
     m.loopA.position.x = 0.05 + g * 0.12; m.loopB.position.x = -0.05 - g * 0.12;
@@ -957,12 +1186,25 @@ function poseRoom(t) {
 }
 
 /* ================================================================
-   손목 확대 무대
+   손목 확대 무대 (어두운 스튜디오)
    ================================================================ */
 const wristStage = new THREE.Group(); wristStage.visible = false; scene.add(wristStage);
 const bigWrist = buildWrist(true);
 bigWrist.root.rotation.set(0.25, -0.55, -1.05);
 wristStage.add(bigWrist.root);
+{
+  const bg = new THREE.Mesh(new THREE.SphereGeometry(60, 48, 24), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new THREE.Color(0x4a6a8c) }, bottom: { value: new THREE.Color(0x0b1016) } },
+    vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+    fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = smoothstep(-0.4, 0.8, vP.y); gl_FragColor = vec4(mix(bottom, top, h), 1.); }',
+  }));
+  bg.userData.noShadowCast = true; bg.userData.noShadowRecv = true; wristStage.add(bg);
+  const key = new THREE.SpotLight(0xfff2e4, 70, 0, 0.6, 0.9, 2); key.position.set(4, 9, 7); key.target.position.set(0.2, 0.6, 0); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+  wristStage.add(key, key.target);
+  const rimW = new THREE.DirectionalLight(0x7fb4ff, 1.1); rimW.position.set(-6, 3, -6); wristStage.add(rimW);
+  wristStage.add(new THREE.HemisphereLight(0xcfe0ee, 0x1a2129, 1.1));
+}
 tagPart('wShaft', bigWrist.parts.shaft); tagPart('wPulley', bigWrist.parts.pulley); tagPart('wYaw', bigWrist.parts.pin2);
 tagPart('wJaw', bigWrist.jawA); tagPart('wJaw', bigWrist.jawB); tagPart('wPitch', bigWrist.pitch); tagPart('wPitch', bigWrist.roll);
 addTag('wShaft', bigWrist.parts.shaft, V(0, -3.4, 0.5), -40, 44, 'wrist');
@@ -972,7 +1214,7 @@ addTag('wYaw', bigWrist.parts.pin2, V(0, 0, 0.38), -66, -46, 'wrist');
 addTag('wJaw', bigWrist.jawPivot, V(0, 1.6, 0), 56, -40, 'wrist');
 
 /* ================================================================
-   라벨 (분해 · 원격 조종)
+   라벨
    ================================================================ */
 {
   const a3 = arms[3], ac = arms[CAM];
@@ -994,27 +1236,65 @@ addTag('wJaw', bigWrist.jawPivot, V(0, 1.6, 0), 56, -40, 'wrist');
   tags['cannula:tele'].box.innerHTML = '<b>원격 운동 중심</b><span>Remote center (port)</span>';
 }
 
-// 부품별 재질 분리 (강조 표시용)
+// 그림자 설정 + 부품별 재질 분리 (강조 표시용)
 const partMeshes = {};
 for (const root of [room, wristStage]) root.traverse((o) => {
-  if (!o.isMesh || o.material === M.shadow || o.material === M.screen) return;
+  if (!o.isMesh) return;
+  const mat = o.material;
+  const glowOnly = mat.emissiveIntensity > 1 && mat.color && mat.color.getHex() === 0;
+  o.castShadow = !o.userData.noShadowCast && !glowOnly && !mat.transparent && !mat.transmission;
+  o.receiveShadow = !o.userData.noShadowRecv && !glowOnly;
   if (!o.userData.partId) return;
-  o.material = o.material.clone();
+  o.material = mat.clone();
   o.userData.baseEmissive = o.material.emissive ? o.material.emissive.clone() : null;
   o.userData.baseEmissiveI = o.material.emissiveIntensity ?? 0;
   (partMeshes[o.userData.partId] ||= []).push(o);
 });
 
 /* ================================================================
+   후처리 (앰비언트 오클루전 · 블룸 · 톤매핑 · 비네트)
+   ================================================================ */
+let composer, gtaoPass, bloomPass;
+function buildComposer(q) {
+  const pr = q === 'high' ? Math.min(devicePixelRatio, 1.75) : Math.min(devicePixelRatio, 1);
+  renderer.setPixelRatio(pr); renderer.setSize(innerWidth, innerHeight);
+  if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); gtaoPass.dispose(); bloomPass.dispose(); }
+  const rt = new THREE.WebGLRenderTarget(innerWidth * pr, innerHeight * pr, { type: THREE.HalfFloatType, samples: q === 'high' ? 4 : 0 });
+  composer = new EffectComposer(renderer, rt);
+  composer.setPixelRatio(pr); composer.setSize(innerWidth, innerHeight);
+  composer.addPass(new RenderPass(scene, camera));
+  gtaoPass = new GTAOPass(scene, camera, innerWidth, innerHeight);
+  gtaoPass.updateGtaoMaterial({ radius: 1.4, distanceExponent: 1.6, thickness: 1.2, scale: 1.1, samples: 16 });
+  gtaoPass.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 5, rings: 2, samples: 16 });
+  gtaoPass.blendIntensity = 0.9; gtaoPass.enabled = q === 'high'; composer.addPass(gtaoPass);
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.55, 1.6); composer.addPass(bloomPass);
+  composer.addPass(new OutputPass());
+  const vig = new ShaderPass(VignetteShader); vig.uniforms.offset.value = 0.95; vig.uniforms.darkness.value = 1.2; composer.addPass(vig);
+}
+let quality = (wide.matches && !matchMedia('(pointer: coarse)').matches) ? 'high' : 'fast';
+const autoQuality = { frames: 0, time: 0, done: !!window.__noAutoQuality };
+function applyQuality(q, announce) {
+  quality = q;
+  const size = q === 'high' ? 2048 : 1024;
+  for (const l of [...lampSpots, ceilingKey]) { if (l.shadow.mapSize.x !== size) { l.shadow.mapSize.set(size, size); if (l.shadow.map) { l.shadow.map.dispose(); l.shadow.map = null; } } }
+  lampSpots[1].castShadow = q === 'high';
+  buildComposer(q);
+  const b = $('#qualityBtn'); b.dataset.q = q; b.querySelector('span').textContent = q === 'high' ? '화질 높음' : '화질 빠름';
+  b.setAttribute('aria-label', q === 'high' ? '화질 높음. 누르면 빠른 화질로 바꿉니다' : '화질 빠름. 누르면 높은 화질로 바꿉니다');
+  if (announce) setStatus(q === 'high' ? '화질을 높였어요. 그림자와 음영이 더 깊어져요' : '화질을 낮춰 더 부드럽게 움직이게 했어요');
+}
+$('#qualityBtn').addEventListener('click', () => { autoQuality.done = true; applyQuality(quality === 'high' ? 'fast' : 'high', true); });
+
+/* ================================================================
    내시경 화면 (따로 그리는 작은 캔버스)
    ================================================================ */
 const pipCam = new THREE.PerspectiveCamera(72, 4 / 3, 0.01, 20); pipCam.layers.set(2);
-const scopeLamp = new THREE.PointLight(0xfff3e2, 1.9, 0, 2); scopeLamp.layers.set(2); scene.add(scopeLamp);
-const pipAmbient = new THREE.AmbientLight(0x5a2a24, 0.45); pipAmbient.layers.set(2); scene.add(pipAmbient);
+const scopeLamp = new THREE.PointLight(0xfff3e2, 2.4, 0, 2); scopeLamp.layers.set(2); scene.add(scopeLamp);
+const pipAmbient = new THREE.AmbientLight(0x5a2a24, 0.5); pipAmbient.layers.set(2); scene.add(pipAmbient);
 const pipFog = new THREE.Fog(0x1a0605, 1.6, 4.6);
 const pipRenderer = new THREE.WebGLRenderer({ antialias: true });
 pipRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-pipRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+pipRenderer.toneMapping = THREE.AgXToneMapping; pipRenderer.toneMappingExposure = 1.25;
 pipRenderer.setClearColor(0x080303, 1);
 $('#pipView').appendChild(pipRenderer.domElement);
 let pipSize = '';
@@ -1022,11 +1302,10 @@ let pipSize = '';
 /* ================================================================
    카메라
    ================================================================ */
-poseRoom(0);
-state.dock.t = 1; poseRoom(0);
-const fullBox = new THREE.Box3().setFromObject(room);
+state.dock.t = 1; poseRoom();
+const fullBox = new THREE.Box3(); for (const o of [table, cart, consoleG, vision, anesthesia, ...arms.flatMap((a) => [a.link1, a.link2, a.spar])]) fullBox.expandByObject(o);
 const coreBox = new THREE.Box3(); for (const o of [table, cart, ...arms.flatMap((a) => [a.link1, a.link2, a.spar])]) coreBox.expandByObject(o);
-state.dock.t = reduced ? 1 : 0; poseRoom(0);
+state.dock.t = reduced ? 1 : 0; poseRoom();
 bigWrist.root.updateMatrixWorld(true);
 const wristBox = new THREE.Box3().setFromObject(bigWrist.pitch).expandByScalar(0.9);
 
@@ -1034,10 +1313,8 @@ function freeRect() {
   const w = innerWidth, h = innerHeight; let l = 0, t = 0, r = w, b = h;
   const head = $('#head').getBoundingClientRect(), st = $('#status').getBoundingClientRect();
   b = Math.min(b, st.top - 6);
-  if (wide.matches) {
-    const side = $('#side').getBoundingClientRect(); if (side.width > 0) r = Math.min(r, side.left - 10);
-    t = head.bottom * 0.6;
-  } else {
+  if (wide.matches) { const side = $('#side').getBoundingClientRect(); if (side.width > 0) r = Math.min(r, side.left - 10); t = head.bottom * 0.5; }
+  else {
     t = head.bottom + 4;
     const sr = $('#side').getBoundingClientRect(); if (sr.height > 4) b = Math.min(b, sr.top - 6);
     if (state.tele.on) { const pr = $('#pipWrap').getBoundingClientRect(); if (pr.height > 0) t = Math.max(t, pr.bottom * 0.7); }
@@ -1049,7 +1326,6 @@ function fitBox(bx, dir, pad = 1.06) {
   const fr = freeRect();
   const vf = 2 * Math.atan(Math.tan((camera.fov * DEG) / 2) * (fr.h / innerHeight));
   const hf = 2 * Math.atan(Math.tan((camera.fov * DEG) / 2) * camera.aspect * (fr.w / innerWidth));
-  // 대략적인 투영 크기: 보는 방향에 따라 가로 폭이 바뀜
   const yaw = Math.atan2(dir.x, dir.z);
   const hx = (Math.abs(Math.cos(yaw)) * s.x + Math.abs(Math.sin(yaw)) * s.z) / 2 * pad;
   const hy = (s.y * Math.cos(Math.asin(clamp(dir.y, -1, 1))) + Math.abs(dir.y) * Math.max(s.x, s.z) * 0.5) / 2 * pad;
@@ -1057,7 +1333,7 @@ function fitBox(bx, dir, pad = 1.06) {
   const d = Math.max(hx / Math.tan(hf / 2), hy / Math.tan(vf / 2)) + depth;
   return { pos: c.clone().addScaledVector(dir, d), target: c };
 }
-const HOME_DIR = V(0.3, 0.42, 1).normalize();
+const HOME_DIR = V(0.3, 0.4, 1).normalize();
 function homeView() {
   if (state.mode === 'wrist') return fitBox(wristBox, V(0.15, 0.25, 1).normalize(), 1.25);
   if (state.tele.on) {
@@ -1067,7 +1343,7 @@ function homeView() {
   }
   const bx = (wide.matches ? fullBox : coreBox).clone();
   if (state.exploded) bx.expandByVector(V(2.5, 3, 2));
-  return fitBox(bx, HOME_DIR, wide.matches ? 1.02 : 1.08);
+  return fitBox(bx, HOME_DIR, wide.matches ? 1.0 : 1.08);
 }
 function flyTo(v, dur = 1.4) { state.tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: v.pos, t1: v.target, start: nowS(), dur: reduced ? 0.01 : dur }; }
 function flyHome(dur) { flyTo(homeView(), dur); state.userMoved = false; }
@@ -1077,7 +1353,7 @@ controls.addEventListener('start', () => { state.userMoved = true; state.tween =
    UI
    ================================================================ */
 const keys = Object.fromEntries([...document.querySelectorAll('.key')].map((b) => [b.dataset.act, b]));
-const setStatus = (t) => { $('#status').textContent = t; };
+function setStatus(t) { $('#status').textContent = t; }
 function syncUI() {
   const wr = state.mode === 'wrist';
   keys.rotate.setAttribute('aria-pressed', String(state.rotating));
@@ -1122,6 +1398,8 @@ function switchMode(mode, after) {
   setTimeout(() => {
     selectPart(null);
     state.mode = mode; room.visible = mode === 'room'; wristStage.visible = mode === 'wrist';
+    scene.fog = mode === 'room' ? roomFog : null;
+    scene.environment = mode === 'room' ? roomEnv : studioEnv;
     showTagGroup('wrist', mode === 'wrist');
     syncUI();
     requestAnimationFrame(() => {
@@ -1133,26 +1411,11 @@ function switchMode(mode, after) {
   }, reduced ? 0 : 290);
 }
 
-// 도킹
 const DOCK_STEPS = [0.28, 0.45, 0.74, 0.88, 1.01];
-function playDock(from, to, dur, then) {
-  state.dock = { ...state.dock, from, to, start: nowS(), dur: reduced ? 0.01 : dur, playing: true, then };
-  syncUI();
-}
+function playDock(from, to, dur, then) { state.dock = { ...state.dock, from, to, start: nowS(), dur: reduced ? 0.01 : dur, playing: true, then }; syncUI(); }
 function finishDockNow() { state.dock.t = 1; state.dock.playing = false; state.dock.then = null; }
-// 분해
-function setExplode(on) {
-  for (const k in exV) exV0[k] = exV[k];
-  state.ex = { to: on ? 1 : 0, start: nowS(), dur: reduced ? 0.4 : 2.6 };
-  state.exploded = on;
-}
-// 원격 조종
-function setTele(on) {
-  state.tele.on = on;
-  for (const a of arms) a.rcm.visible = on;
-  showTagGroup('tele', on);
-  syncUI();
-}
+function setExplode(on) { for (const k in exV) exV0[k] = exV[k]; state.ex = { to: on ? 1 : 0, start: nowS(), dur: reduced ? 0.4 : 2.6 }; state.exploded = on; }
+function setTele(on) { state.tele.on = on; for (const a of arms) a.rcm.visible = on; showTagGroup('tele', on); syncUI(); }
 document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
   state.tele.scale = +b.dataset.scale;
   document.querySelectorAll('.seg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
@@ -1168,14 +1431,10 @@ $('#tremorBtn').addEventListener('click', (e) => {
   $('#osdTremor').textContent = state.tele.filter ? 'FILTER ON' : 'FILTER OFF';
   setStatus(state.tele.filter ? '떨림 보정을 켰어요. 기구 끝이 매끄럽게 움직여요' : '떨림 보정을 껐어요. 손 떨림이 기구 끝까지 전달돼요');
 });
-// 손목
 const WDEMO = [[0, 0, 0, 20, 0], [1.2, 70, 0, 20, 0], [2.2, -70, 0, 20, 0], [3.2, 0, 0, 20, 0], [4.2, 0, 70, 20, 0], [5.2, 0, -70, 20, 0], [6.2, 0, 0, 20, 0],
   [7.0, 0, 0, 65, 0], [7.8, 0, 0, 0, 0], [8.6, 0, 0, 65, 0], [9.4, 0, 0, 10, 0], [11.4, 0, 0, 10, 360], [12.6, 40, 40, 30, 360], [14.0, 0, 0, 20, 360]];
 function wDemoAt(t) {
-  for (let i = 1; i < WDEMO.length; i++) if (t <= WDEMO[i][0]) {
-    const a = WDEMO[i - 1], b = WDEMO[i], e = easeInOut((t - a[0]) / (b[0] - a[0]));
-    return [lerp(a[1], b[1], e), lerp(a[2], b[2], e), lerp(a[3], b[3], e), lerp(a[4], b[4], e)];
-  }
+  for (let i = 1; i < WDEMO.length; i++) if (t <= WDEMO[i][0]) { const a = WDEMO[i - 1], b = WDEMO[i], e = easeInOut((t - a[0]) / (b[0] - a[0])); return [lerp(a[1], b[1], e), lerp(a[2], b[2], e), lerp(a[3], b[3], e), lerp(a[4], b[4], e)]; }
   return null;
 }
 function startWristDemo() { state.wrist.demo = { start: nowS() }; $('#wristDemo').textContent = '시연 멈춤'; }
@@ -1184,7 +1443,6 @@ $('#wristDemo').addEventListener('click', () => (state.wrist.demo ? stopWristDem
 $('#wristZero').addEventListener('click', () => { stopWristDemo(); Object.assign(state.wrist, { tp: 0, ty: 0, tg: 20, tr: 0 }); });
 for (const [id, key] of [['wPitch', 'tp'], ['wYaw', 'ty'], ['wGrip', 'tg'], ['wRoll', 'tr']]) $('#' + id).addEventListener('input', (e) => { stopWristDemo(); state.wrist[key] = +e.target.value; });
 
-// 독 버튼
 function toRoom(after) { switchMode('room', after); }
 const actions = {
   rotate() { state.rotating = !state.rotating; syncUI(); if (state.rotating && state.userMoved) flyHome(1); setStatus(state.rotating ? '천천히 돌려 봐요. 끌어서 직접 돌릴 수도 있어요' : '회전을 멈췄어요'); },
@@ -1192,8 +1450,7 @@ const actions = {
     toRoom(() => {
       if (state.exploded) setExplode(false);
       setTele(false); selectPart(null);
-      if (state.dock.t > 0.01) playDock(state.dock.t, 0, 2.4 * state.dock.t, () => playDock(0, 1, 9));
-      else playDock(0, 1, 9);
+      if (state.dock.t > 0.01) playDock(state.dock.t, 0, 2.4 * state.dock.t, () => playDock(0, 1, 9)); else playDock(0, 1, 9);
       requestAnimationFrame(() => flyHome(1.4));
     });
   },
@@ -1218,7 +1475,7 @@ const actions = {
       if (state.exploded) setExplode(false);
       finishDockNow(); selectPart(null); setTele(true);
       requestAnimationFrame(() => flyHome(1.6));
-      setStatus('콘솔의 손 움직임이 줄어들어 기구 끝으로 전달돼요. 오른쪽 위는 내시경 화면이에요');
+      setStatus('콘솔의 손 움직임이 줄어들어 기구 끝으로 전달돼요. 내시경 화면도 함께 보여요');
     });
   },
   wrist() {
@@ -1236,14 +1493,13 @@ const actions = {
 };
 for (const [act, b] of Object.entries(keys)) b.addEventListener('click', () => actions[act]());
 
-// 클릭 선택
 const raycaster = new THREE.Raycaster(); const ndc = new THREE.Vector2();
 function pickAt(x, y) {
   const r = renderer.domElement.getBoundingClientRect();
   ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
   const hits = raycaster.intersectObject(state.mode === 'wrist' ? wristStage : room, true);
-  for (const h of hits) { if (h.object.userData.partId && h.object.material !== M.shadow) return h.object.userData.partId; }
+  for (const h of hits) { if (h.object.material === M.haze) continue; return h.object.userData.partId || null; }
   return null;
 }
 let down = null;
@@ -1279,19 +1535,15 @@ function updateDock(t) {
     if (d.playing && d.to === 0) setStatus('팔을 접고 카트를 뒤로 빼는 중이에요');
   }
 }
-function updateExplode(t, dt) {
+function updateExplode(t) {
   const ex = state.ex; const g = clamp((t - ex.start) / ex.dur, 0, 1);
-  for (const k in exV) {
-    const kk = ex.to === 1 ? EX_ORDER[k] : 0.8 - EX_ORDER[k];
-    const local = clamp((g - kk * 0.55) / 0.45, 0, 1);
-    exV[k] = lerp(exV0[k], ex.to, easeInOut(local));
-  }
+  for (const k in exV) { const kk = ex.to === 1 ? EX_ORDER[k] : 0.8 - EX_ORDER[k]; exV[k] = lerp(exV0[k], ex.to, easeInOut(clamp((g - kk * 0.55) / 0.45, 0, 1))); }
   const on = ex.to === 1 && g > 0.85 && state.mode === 'room';
   if (on !== updateExplode.last) { showTagGroup('explode', on); updateExplode.last = on; }
 }
 function updateWrist(dt, t) {
   const w = state.wrist;
-  if (w.demo) { const v = wDemoAt(t - w.demo.start); if (v) { [w.tp, w.ty, w.tg, w.tr] = v; } else stopWristDemo(); }
+  if (w.demo) { const v = wDemoAt(t - w.demo.start); if (v) [w.tp, w.ty, w.tg, w.tr] = v; else stopWristDemo(); }
   const sp = w.demo ? 14 : 8;
   w.p = smoothTo(w.p, w.tp, dt, sp); w.y = smoothTo(w.y, w.ty, dt, sp); w.g = smoothTo(w.g, w.tg, dt, sp); w.r = smoothTo(w.r, w.tr, dt, sp);
   bigWrist.set(w.p * DEG, w.y * DEG, w.g * DEG, w.r * DEG);
@@ -1317,39 +1569,46 @@ function updateCamera(t, dt) {
 }
 const pipView = $('#pipView');
 function render() {
-  renderer.setViewport(0, 0, innerWidth, innerHeight); renderer.clear();
-  renderer.render(scene, camera);
+  composer.render();
   labelRenderer.render(scene, camera);
   if (state.mode === 'room' && state.tele.on) {
     const pw = pipView.clientWidth, ph = pipView.clientHeight;
     if (pw > 4) {
       const key = pw + 'x' + ph;
       if (key !== pipSize) { pipSize = key; pipRenderer.setSize(pw, ph); pipCam.aspect = pw / ph; pipCam.updateProjectionMatrix(); }
-      const sc = arms[CAM], st = armState[CAM];
+      const st = armState[CAM];
       const tip = st.P.clone().addScaledVector(st.d, st.depth);
-      pipCam.position.copy(tip); pipCam.up.set(0, 0, -1); pipCam.lookAt(W.clone().add(V(0, 0.06, -0.05))); // 화면 위쪽 = 환자 등 쪽, 오른쪽 = +x
+      pipCam.position.copy(tip); pipCam.up.set(0, 0, -1); pipCam.lookAt(W.clone().add(V(0, 0.06, -0.05)));
       scopeLamp.position.copy(tip);
       const env = scene.environment; scene.environment = null; scene.fog = pipFog;
       pipRenderer.render(scene, pipCam);
-      scene.environment = env; scene.fog = null;
+      scene.environment = env; scene.fog = roomFog;
     }
   }
 }
-let lastT = nowS(), lastSec = -1;
-renderer.setAnimationLoop(() => {
-  const t = nowS(), dt = Math.min(0.05, t - lastT); lastT = t;
+let lastT = nowS(), lastSec = -1, vitalsT = 0, frameNo = 0;
+function frame() {
+  const t = nowS(), raw = t - lastT, dt = Math.min(0.05, raw); lastT = t;
+  if (!autoQuality.done && quality === 'high') {   // 처음 몇 초 동안 너무 느리면 화질을 자동으로 낮춤
+    autoQuality.frames++; autoQuality.time += raw;
+    if (autoQuality.frames >= 40) {
+      autoQuality.done = true;
+      if (autoQuality.time / autoQuality.frames > 0.045) { applyQuality('fast', false); setStatus('화면이 느려서 화질을 낮췄어요. 왼쪽 위에서 다시 높일 수 있어요'); }
+    }
+  }
   if (state.tele.on) { state.tele.t += dt; state.tele.elapsed += dt; const s = Math.floor(state.tele.elapsed); if (s !== lastSec) { lastSec = s; $('#osdTime').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; } }
   updateDock(t);
-  updateExplode(t, dt);
-  if (state.mode === 'room') poseRoom(t);
+  updateExplode(t);
+  if (state.mode === 'room') { poseRoom(); vitalsT += dt; if (++frameNo % 3 === 0) drawVitals(vitalsT); }
   updateWrist(dt, t);
   updateHighlight(t);
   updateCamera(t, dt);
   render();
-});
+}
 
 function onResize() {
   renderer.setSize(innerWidth, innerHeight); labelRenderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   if (!state.userMoved) flyTo(homeView(), 0.4);
 }
@@ -1357,8 +1616,9 @@ addEventListener('resize', onResize);
 wide.addEventListener('change', () => { for (const t of Object.values(tags)) placeTag(t); requestAnimationFrame(onResize); });
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.selected) selectPart(null); });
 
-// 시작: 카트가 굴러와 도킹
+applyQuality(quality, false);
 syncUI();
+renderer.setAnimationLoop(frame);
 requestAnimationFrame(() => {
   const hv = homeView();
   camera.position.copy(hv.pos.clone().sub(hv.target).applyAxisAngle(Y_AXIS, -0.5).multiplyScalar(1.15).add(hv.target));
