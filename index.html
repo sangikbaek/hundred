@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- artifact:start -->
+<title>대장내시경 3D 탐색기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: 화면 전체가 3D 무대. 왼쪽 위 제목, 아래 조작 독, 오른쪽 맥락 패널(넓은 화면) / 아래 시트(폰). */
+:root {
+  --bg: #e6edeb;
+  --bg-deep: #cfdcd8;
+  --ink: #0f201f;
+  --ink-soft: #4a5e5b;
+  --line: rgba(15, 32, 31, .10);
+  --panel: rgba(248, 252, 251, .86);
+  --panel-edge: rgba(15, 32, 31, .10);
+  --accent: #0a7a72;
+  --accent-soft: rgba(10, 122, 114, .13);
+  --on-accent: #ffffff;
+  --mucosa: #c4546a;
+  --osd: #a6f4de;
+  --scope: #050708;
+  --shadow: 0 12px 32px rgba(15, 32, 31, .12);
+  --font-ui: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1314; --bg-deep: #15282a; --ink: #e1edea; --ink-soft: #93a9a5; --line: rgba(225, 237, 234, .08);
+    --panel: rgba(15, 28, 29, .86); --panel-edge: rgba(225, 237, 234, .10); --accent: #3fc5b5; --accent-soft: rgba(63, 197, 181, .16);
+    --on-accent: #032320; --mucosa: #ec8797; --osd: #a6f4de; --scope: #050708; --shadow: 0 12px 32px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1314; --bg-deep: #15282a; --ink: #e1edea; --ink-soft: #93a9a5; --line: rgba(225, 237, 234, .08);
+  --panel: rgba(15, 28, 29, .86); --panel-edge: rgba(225, 237, 234, .10); --accent: #3fc5b5; --accent-soft: rgba(63, 197, 181, .16);
+  --on-accent: #032320; --mucosa: #ec8797; --osd: #a6f4de; --scope: #050708; --shadow: 0 12px 32px rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden; background: var(--bg); color: var(--ink);
+  font: 400 14px/1.5 var(--font-ui); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+
+#stage { position: fixed; inset: 0; background: radial-gradient(120% 95% at 50% 42%, var(--bg-deep) 0%, var(--bg) 72%); }
+#stage::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 44px 44px; background-position: center;
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 45%, #000 20%, transparent 100%);
+  mask-image: radial-gradient(70% 60% at 50% 45%, #000 20%, transparent 100%);
+}
+#stage canvas { position: absolute; inset: 0; display: block; touch-action: none; outline: none; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+
+/* ---------- HUD ---------- */
+.hud {
+  position: fixed; inset: 0; pointer-events: none;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 14px);
+  display: grid; grid-template-columns: minmax(0, 1fr) 344px; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 10px 20px;
+}
+.hud > * { pointer-events: auto; }
+
+.head { grid-column: 1; grid-row: 1; align-self: start; max-width: 30rem; pointer-events: none; }
+.eyebrow { margin: 0 0 4px; font: 500 11px/1.2 var(--font-data); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.head h1 { margin: 0; font-weight: 700; font-size: clamp(20px, 2.4vw, 28px); line-height: 1.2; letter-spacing: -.01em; text-wrap: balance; }
+.head p { margin: 6px 0 0; color: var(--ink-soft); font-size: 13.5px; max-width: 34ch; }
+
+.side {
+  grid-column: 2; grid-row: 1 / 3; align-self: start; min-height: 0; max-height: 100%;
+  overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 10px; scrollbar-width: thin;
+}
+.card {
+  background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 14px; padding: 14px 16px;
+  box-shadow: var(--shadow); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); min-width: 0;
+}
+.card h2 { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.3; }
+.card .en { margin: 2px 0 0; font: 400 11.5px/1.3 var(--font-data); color: var(--ink-soft); letter-spacing: .02em; }
+.card p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.65; color: var(--ink); }
+.card .kicker { margin: 0 0 6px; font: 500 10.5px/1.2 var(--font-data); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+.card-head { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+.x-btn { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--panel-edge); background: transparent; cursor: pointer; display: grid; place-items: center; color: var(--ink-soft); }
+.x-btn:hover { color: var(--ink); background: var(--accent-soft); }
+.spec-chip { display: inline-block; margin-top: 10px; padding: 3px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font: 500 12px/1.4 var(--font-data); font-variant-numeric: tabular-nums; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { border: 1px solid var(--panel-edge); background: transparent; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; color: var(--ink); }
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+.spec { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 10px 0 0; font-size: 13px; }
+.spec dt { color: var(--ink-soft); }
+.spec dd { margin: 0; font-family: var(--font-data); font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; }
+.fine { margin-top: 10px !important; font-size: 12px !important; color: var(--ink-soft) !important; line-height: 1.55 !important; }
+
+/* 굴곡 패널 */
+.readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.readout { border: 1px solid var(--panel-edge); border-radius: 10px; padding: 8px 10px; }
+.readout small { display: block; font-size: 11.5px; color: var(--ink-soft); }
+.readout strong { display: block; font: 500 22px/1.2 var(--font-data); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.readout strong em { font-style: normal; font-size: 12px; color: var(--accent); margin-right: 6px; letter-spacing: .06em; }
+.slider { display: grid; gap: 4px; margin-top: 12px; }
+.slider label { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-soft); }
+.slider label span { font-family: var(--font-data); font-size: 11px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; height: 24px; }
+.row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--panel-edge); background: transparent; border-radius: 9px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink); }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* 진입 패널 */
+.pip-wrap { position: relative; aspect-ratio: 1 / 1; max-width: 100%; border-radius: 16px; background: var(--scope); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--panel-edge); }
+.pip-view { position: absolute; inset: 7%; border-radius: 22%; overflow: hidden; background: #000; }
+.pip-view canvas { display: block; width: 100%; height: 100%; }
+.pip-osd { position: absolute; inset: 0; pointer-events: none; font: 500 11px/1.3 var(--font-data); color: var(--osd); letter-spacing: .04em; }
+.pip-osd span { position: absolute; }
+.pip-osd .tl { left: 10px; top: 9px; }
+.pip-osd .tr { right: 10px; top: 9px; text-align: right; }
+.pip-osd .bl { left: 10px; bottom: 9px; }
+.pip-osd .br { right: 10px; bottom: 9px; text-align: right; }
+.pip-osd .flag { left: 50%; top: 12%; transform: translateX(-50%); padding: 2px 8px; border: 1px solid var(--osd); border-radius: 4px; white-space: nowrap; }
+.seg-now { margin-top: 2px; font-size: 20px; font-weight: 700; }
+.track { position: relative; margin-top: 14px; height: 30px; }
+.track-bar { position: absolute; left: 0; right: 0; top: 13px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.track-bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); }
+.track-ticks { position: absolute; inset: 0; pointer-events: none; }
+.track-ticks b { position: absolute; top: 9px; width: 1px; height: 12px; background: var(--ink-soft); opacity: .5; }
+.track input { position: absolute; inset: 0; opacity: 0; cursor: pointer; height: 30px; }
+.track:focus-within .track-bar { outline: 2px solid var(--accent); outline-offset: 3px; }
+.seg-list { display: flex; justify-content: space-between; gap: 2px; font-size: 10.5px; color: var(--ink-soft); }
+.seg-list span.on { color: var(--accent); font-weight: 600; }
+
+/* ---------- 독 ---------- */
+.status {
+  grid-column: 1 / -1; grid-row: 3; justify-self: center; max-width: 100%;
+  font-size: 12.5px; color: var(--ink-soft); background: var(--panel); border: 1px solid var(--panel-edge);
+  padding: 4px 12px; border-radius: 999px; pointer-events: none; text-align: center;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.dock {
+  grid-column: 1 / -1; grid-row: 4; justify-self: center; max-width: 100%;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 6px;
+  background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 18px; box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.key {
+  display: grid; justify-items: center; gap: 3px; min-width: 64px; padding: 8px 6px 7px; border: 0; border-radius: 12px;
+  background: transparent; cursor: pointer; color: var(--ink); font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  transition: background-color .2s, color .2s;
+}
+.key svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.key:hover { background: var(--accent-soft); }
+.key[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.key:focus-visible, .btn:focus-visible, .chip:focus-visible, .x-btn:focus-visible, .tag-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- 3D 라벨 ---------- */
+.tag { position: absolute; width: 0; height: 0; opacity: 0; transition: opacity .35s ease; pointer-events: none; }
+.tag.on { opacity: 1; }
+.tag::before { content: ""; position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.tag-line { position: absolute; left: 0; top: 0; height: 1px; background: var(--ink-soft); opacity: .55; transform-origin: 0 50%; }
+.tag-box {
+  position: absolute; display: grid; text-align: left; white-space: nowrap; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 8px; padding: 4px 8px;
+  font: 600 12px/1.25 var(--font-ui); color: var(--ink); box-shadow: 0 4px 14px rgba(0, 0, 0, .08);
+}
+.tag.on .tag-box { pointer-events: auto; }
+.tag-box span { font: 400 10px/1.25 var(--font-data); color: var(--ink-soft); letter-spacing: .02em; }
+.tag.sel .tag-box, .tag.current .tag-box { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.tag.current .tag-box { background: var(--accent); color: var(--on-accent); }
+.tag.current .tag-box span { color: var(--on-accent); opacity: .8; }
+
+.fade { position: fixed; inset: 0; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity .28s ease; }
+.fade.show { opacity: 1; }
+.nogl { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--ink-soft); }
+
+/* ---------- 좁은 화면 ---------- */
+@media (max-width: 899px) {
+  .hud { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 8px; }
+  .head p { display: none; }
+  .head h1 { font-size: 19px; }
+  .side { grid-column: 1; grid-row: 2; align-self: end; max-height: 44vh; }
+  .side .card { padding: 12px 14px; }
+  .card.parts, #specCard, #insertCard .fine { display: none; }
+  .pip-wrap { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 64px); right: max(16px, env(safe-area-inset-right, 0px)); width: min(46vw, 230px); z-index: 2; }
+  .dock { width: 100%; }
+  .key { min-width: 0; padding: 7px 2px 6px; font-size: 11.5px; }
+  .key svg { width: 20px; height: 20px; }
+  .tag-box { font-size: 11px; padding: 3px 6px; }
+  .tag-box span { display: none; }
+  .status { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tag, .fade, .key { transition: none; }
+}
+</style>
+
+<div id="stage" aria-label="대장내시경 3D 모델 화면"></div>
+
+<div class="hud">
+  <header class="head" id="head">
+    <p class="eyebrow">Colonoscope · 교육용 3D 모델</p>
+    <h1>대장내시경 3D 탐색기</h1>
+    <p>부품을 누르면 설명이 나오고, 아래 버튼으로 기기를 돌리고 분해하고 꺾고 대장 안으로 넣어 볼 수 있어요.</p>
+  </header>
+
+  <aside class="side" id="side" aria-live="polite">
+    <!-- 진입: 내시경 화면 -->
+    <div class="pip-wrap" id="pipWrap" hidden>
+      <div class="pip-view" id="pipView"></div>
+      <div class="pip-osd" aria-hidden="true">
+        <span class="tl">WLI<br>×1.0</span>
+        <span class="tr" id="osdTime">00:00</span>
+        <span class="bl" id="osdSeg">RECTUM</span>
+        <span class="br" id="osdBend">UP 0°<br>R 0°</span>
+        <span class="flag" id="osdFlag" hidden>용종(예시)</span>
+      </div>
+    </div>
+
+    <!-- 부품 설명 -->
+    <section class="card" id="infoCard" hidden>
+      <div class="card-head">
+        <div>
+          <p class="kicker">선택한 부품</p>
+          <h2 id="infoKo">조작부</h2>
+          <p class="en" id="infoEn">Control section</p>
+        </div>
+        <button class="x-btn" id="infoClose" type="button" aria-label="설명 닫기">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg>
+        </button>
+      </div>
+      <p id="infoDesc"></p>
+      <span class="spec-chip" id="infoSpec" hidden></span>
+    </section>
+
+    <!-- 굴곡 -->
+    <section class="card" id="bendCard" hidden>
+      <p class="kicker">굴곡 · Angulation</p>
+      <h2>앵글 노브로 선단 꺾기</h2>
+      <p>큰 노브는 상하, 작은 노브는 좌우를 맡습니다. 노브를 돌리면 앵글 와이어가 만곡부를 당겨요.</p>
+      <div class="readouts">
+        <div class="readout"><small>상하 노브</small><strong id="roUD"><em>UP</em>0°</strong></div>
+        <div class="readout"><small>좌우 노브</small><strong id="roLR"><em>R</em>0°</strong></div>
+      </div>
+      <div class="slider">
+        <label for="bendUD">하 ↔ 상 <span>−180° … +180°</span></label>
+        <input id="bendUD" type="range" min="-180" max="180" step="1" value="0">
+      </div>
+      <div class="slider">
+        <label for="bendLR">좌 ↔ 우 <span>−160° … +160°</span></label>
+        <input id="bendLR" type="range" min="-160" max="160" step="1" value="0">
+      </div>
+      <div class="row">
+        <button class="btn primary" id="bendDemo" type="button">자동 시연</button>
+        <button class="btn" id="bendZero" type="button">중립으로</button>
+      </div>
+    </section>
+
+    <!-- 진입 -->
+    <section class="card" id="insertCard" hidden>
+      <p class="kicker">진입 · Insertion</p>
+      <div class="seg-now" id="segName">직장</div>
+      <p class="en" id="segEn">Rectum</p>
+      <p id="segDesc"></p>
+      <div class="track">
+        <div class="track-bar"><i id="trackFill"></i></div>
+        <div class="track-ticks" id="trackTicks"></div>
+        <input id="insertDepth" type="range" min="0" max="1000" step="1" value="0" aria-label="삽입 위치">
+      </div>
+      <div class="seg-list" aria-hidden="true"><span>직장</span><span id="segCount">구간 1 / 8</span><span>맹장</span></div>
+      <div class="row">
+        <button class="btn primary" id="insertPlay" type="button">일시정지</button>
+        <button class="btn" id="insertBack" type="button">빼면서 관찰</button>
+        <button class="btn" id="insertRestart" type="button">처음부터</button>
+      </div>
+      <p class="fine">실제 검사에서는 장을 접어 펴는 단축 조작 덕분에 대략 70–80 cm만 넣어도 맹장에 닿습니다. 경로와 크기는 이해를 돕기 위한 예시입니다.</p>
+    </section>
+
+    <!-- 분해: 사양 -->
+    <section class="card" id="specCard" hidden>
+      <p class="kicker">분해도 · Exploded view</p>
+      <h2>예시 사양</h2>
+      <p class="en">일반적인 성인용 대장내시경 기준</p>
+      <dl class="spec">
+        <dt>유효 길이</dt><dd>1,330 / 1,680 mm</dd>
+        <dt>선단부 외경</dt><dd>약 12–13 mm</dd>
+        <dt>겸자 채널 내경</dt><dd>약 3.2–3.8 mm</dd>
+        <dt>만곡 각도</dt><dd>상180° 하180° 좌160° 우160°</dd>
+        <dt>시야각</dt><dd>약 140–170°</dd>
+      </dl>
+      <p class="fine">구조를 보여주기 위한 개념적인 분해도입니다. 실제로 사용자가 떼어 세척하는 부품은 밸브와 겸자 마개 정도예요. 삽입부가 반투명해지면 속을 지나는 와이어와 광섬유가 보입니다.</p>
+    </section>
+
+    <!-- 부품 목록 (넓은 화면 기본) -->
+    <section class="card parts" id="partsCard">
+      <p class="kicker">부품 바로가기</p>
+      <h2>어디를 볼까요?</h2>
+      <div class="chips" id="chips"></div>
+      <p class="fine">화면을 끌면 돌려 보고, 휠이나 두 손가락으로 확대할 수 있어요. 특정 제품을 재현한 모델이 아니며 치수와 각도는 일반적인 예시입니다.</p>
+    </section>
+  </aside>
+
+  <div class="status" id="status" role="status">부품을 누르면 설명이 나와요</div>
+
+  <nav class="dock" id="dock" aria-label="기기 조작">
+    <button class="key" type="button" data-act="rotate" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4.5h-4.5"/></svg>회전</button>
+    <button class="key" type="button" data-act="explode" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M4 4l3 3M20 4l-3 3M4 20l3-3M20 20l-3-3"/></svg>분해</button>
+    <button class="key" type="button" data-act="assemble" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M12 5v14M5 12h14"/></svg>조립</button>
+    <button class="key" type="button" data-act="bend" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M5 21V12a7 7 0 0 1 7-7h2"/><path d="M14 2l3 3-3 3"/><circle cx="18.5" cy="5" r=".6"/></svg>굴곡</button>
+    <button class="key" type="button" data-act="insert" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M3 18c4 0 4-12 9-12s5 8 9 8"/><circle cx="21" cy="14" r="1.4"/></svg>진입</button>
+    <button class="key" type="button" data-act="tip" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/><circle cx="11" cy="11" r="2"/></svg>선단부</button>
+    <button class="key" type="button" data-act="reset" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.34-5.66"/><path d="M4 4v4.5h4.5"/><circle cx="12" cy="12" r="1.2"/></svg>초기화</button>
+  </nav>
+</div>
+
+<div class="fade" id="fade"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ================================================================
+   기본 유틸
+   ================================================================ */
+const $ = (s) => document.querySelector(s);
+const DEG = Math.PI / 180;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const smoothTo = (cur, target, dt, speed) => cur + (target - cur) * (1 - Math.exp(-speed * dt));
+const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wide = matchMedia('(min-width: 900px)');
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const Y_AXIS = V(0, 1, 0);
+const nowS = () => performance.now() / 1000;
+
+const stage = $('#stage');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+} catch (err) {
+  stage.innerHTML = '<div class="nogl">이 브라우저에서는 WebGL을 쓸 수 없어 3D 모델을 표시하지 못했어요. 다른 브라우저나 기기에서 열어 주세요.</div>';
+  throw err;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.setClearColor(0x000000, 0);
+renderer.autoClear = false;
+stage.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+labelRenderer.domElement.className = 'labels';
+stage.appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.05, 200);
+camera.layers.enable(1); // 대장 바깥면 (메인 화면 전용)
+camera.position.set(4, 3, 18);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 0.3;
+controls.maxDistance = 40;
+controls.autoRotateSpeed = 1.6;
+controls.enablePan = true;
+
+scene.add(new THREE.HemisphereLight(0xf0f7ff, 0x1c2426, 0.75));
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.3); keyLight.position.set(4, 7, 8); scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0xbfe6ff, 1.6); rimLight.position.set(-7, 3, -6); scene.add(rimLight);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.5); fillLight.position.set(0, -6, 4); scene.add(fillLight);
+
+/* ================================================================
+   텍스처
+   ================================================================ */
+function makeMarkTexture() {
+  // 삽입부 깊이 눈금: 한 칸 = 10 cm (굵은 띠) + 5 cm (가는 띠)
+  const c = document.createElement('canvas'); c.width = 512; c.height = 8;
+  const g = c.getContext('2d');
+  g.fillStyle = '#17191c'; g.fillRect(0, 0, 512, 8);
+  g.fillStyle = '#e8ecef'; g.fillRect(0, 0, 18, 8); g.fillRect(252, 0, 7, 8);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+
+function makeMucosaTexture() {
+  // 점막 + 가는 혈관: 이음매 없이 반복되도록 가장자리에서 한 번 더 그림
+  const S = 512, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = '#d9806c'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 260; i++) {
+    const x = rnd() * S, y = rnd() * S, r = 10 + rnd() * 50;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    const light = rnd() > 0.5;
+    grd.addColorStop(0, light ? 'rgba(255,196,170,0.22)' : 'rgba(186,78,70,0.16)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grd;
+    for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { g.save(); g.translate(ox, oy); g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.restore(); }
+  }
+  g.lineCap = 'round';
+  const vessel = (x, y, a, w, steps, depth) => {
+    for (let s = 0; s < steps; s++) {
+      const nx = x + Math.cos(a) * 7, ny = y + Math.sin(a) * 7;
+      g.strokeStyle = `rgba(${140 + depth * 20},${28 + depth * 10},${46 + depth * 6},${0.55 - depth * 0.12})`;
+      g.lineWidth = w;
+      for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { g.beginPath(); g.moveTo(x + ox, y + oy); g.lineTo(nx + ox, ny + oy); g.stroke(); }
+      x = nx; y = ny; a += (rnd() - 0.5) * 0.7; w *= 0.975;
+      if (depth < 2 && rnd() < 0.07) vessel(x, y, a + (rnd() > 0.5 ? 0.9 : -0.9), w * 0.7, steps * 0.6 | 0, depth + 1);
+    }
+  };
+  for (let i = 0; i < 22; i++) vessel(rnd() * S, rnd() * S, rnd() * Math.PI * 2, 1.4 + rnd() * 1.8, 40 + rnd() * 40 | 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+
+const markTex = makeMarkTexture();
+
+/* ================================================================
+   재질
+   ================================================================ */
+const M = {
+  body: new THREE.MeshPhysicalMaterial({ color: 0x262a30, roughness: 0.42, clearcoat: 0.55, clearcoatRoughness: 0.32 }),
+  bodyLight: new THREE.MeshPhysicalMaterial({ color: 0x3d434b, roughness: 0.5, clearcoat: 0.3 }),
+  metal: new THREE.MeshStandardMaterial({ color: 0xcbd1d8, metalness: 1, roughness: 0.25 }),
+  darkMetal: new THREE.MeshStandardMaterial({ color: 0x737a83, metalness: 1, roughness: 0.34 }),
+  knob: new THREE.MeshPhysicalMaterial({ color: 0x31363d, roughness: 0.5, clearcoat: 0.25 }),
+  rubber: new THREE.MeshStandardMaterial({ color: 0x16191c, roughness: 0.8 }),
+  white: new THREE.MeshStandardMaterial({ color: 0xf1f3f4, roughness: 0.4 }),
+  suction: new THREE.MeshPhysicalMaterial({ color: 0xb4463c, roughness: 0.42, clearcoat: 0.4 }),
+  airWater: new THREE.MeshPhysicalMaterial({ color: 0x2f6cae, roughness: 0.42, clearcoat: 0.4 }),
+  key: new THREE.MeshPhysicalMaterial({ color: 0xdde2e6, roughness: 0.35, clearcoat: 0.5 }),
+  biopsy: new THREE.MeshStandardMaterial({ color: 0xe8e1cb, roughness: 0.62 }),
+  tube: new THREE.MeshPhysicalMaterial({ map: markTex, roughness: 0.34, clearcoat: 0.7, clearcoatRoughness: 0.28, envMapIntensity: 0.55, transparent: true }),
+  bend: new THREE.MeshPhysicalMaterial({ color: 0x1b1e22, roughness: 0.36, clearcoat: 0.5, clearcoatRoughness: 0.3, envMapIntensity: 0.3, transparent: true }),
+  cord: new THREE.MeshPhysicalMaterial({ color: 0x24272c, roughness: 0.38, clearcoat: 0.6 }),
+  tipBody: new THREE.MeshStandardMaterial({ color: 0x41464e, metalness: 0.6, roughness: 0.3, envMapIntensity: 0.8 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0x0a1622, roughness: 0.03, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 2.4 }),
+  lightGuide: new THREE.MeshStandardMaterial({ color: 0xfff4dc, emissive: 0xffe6b8, emissiveIntensity: 0.9, roughness: 0.2 }),
+  hole: new THREE.MeshStandardMaterial({ color: 0x030405, roughness: 1 }),
+  gold: new THREE.MeshStandardMaterial({ color: 0xd8b25a, metalness: 1, roughness: 0.3 }),
+  wire: new THREE.MeshStandardMaterial({ color: 0xdfe4e8, metalness: 1, roughness: 0.22 }),
+  fiber: new THREE.MeshStandardMaterial({ color: 0xf3d27c, emissive: 0x6b4c0e, emissiveIntensity: 0.6, roughness: 0.4 }),
+  cable: new THREE.MeshStandardMaterial({ color: 0xc77a3c, metalness: 0.6, roughness: 0.35 }),
+  channel: new THREE.MeshPhysicalMaterial({ color: 0xe6f0f1, roughness: 0.25, clearcoat: 0.6 }),
+  airTube: new THREE.MeshStandardMaterial({ color: 0x7db6e3, roughness: 0.35 }),
+  ring: new THREE.MeshStandardMaterial({ color: 0xc3cad1, metalness: 1, roughness: 0.3 }),
+};
+
+const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
+const cyl = (rt, rb, h, seg = 32) => new THREE.CylinderGeometry(rt, rb, h, seg);
+function orientY(obj, dir) { obj.quaternion.setFromUnitVectors(Y_AXIS, dir.clone().normalize()); return obj; }
+
+/* ================================================================
+   부품 정보
+   ================================================================ */
+const INFO = {
+  control: { ko: '조작부', en: 'Control section', desc: '왼손으로 쥐는 부분입니다. 앵글 노브, 밸브, 스위치가 모여 있어 한 손으로 선단을 조종하면서 송기와 흡인을 제어합니다.' },
+  boot: { ko: '꺾임 방지 부츠', en: 'Boot', desc: '조작부와 삽입부가 만나는 곳의 고무 부품입니다. 관이 날카롭게 꺾여 안쪽의 광섬유나 와이어가 상하는 것을 막습니다.' },
+  knobUD: { ko: '상하 앵글 노브', en: 'Up/Down angulation knob', desc: '큰 노브입니다. 돌리면 안쪽의 상하 앵글 와이어가 당겨져 선단이 위아래로 꺾입니다.', spec: '예: 상 180° · 하 180°' },
+  knobRL: { ko: '좌우 앵글 노브', en: 'Right/Left angulation knob', desc: '바깥쪽의 작은 노브입니다. 좌우 앵글 와이어를 당겨 선단을 좌우로 꺾습니다.', spec: '예: 좌 160° · 우 160°' },
+  lock: { ko: '앵글 고정 레버', en: 'Angle lock', desc: '노브를 원하는 위치에 잠가 만곡 각도를 유지합니다. 손을 떼도 선단 방향이 그대로 남습니다.' },
+  suction: { ko: '흡인 밸브', en: 'Suction valve', desc: '누르면 겸자 채널을 통해 장 안의 액체와 공기를 빨아들입니다. 세척을 위해 떼어낼 수 있습니다.' },
+  airwater: { ko: '송기·송수 밸브', en: 'Air/water valve', desc: '가운데 구멍을 막으면 공기(또는 CO₂)가 나와 장을 부풀리고, 끝까지 누르면 물이 나와 렌즈를 닦습니다.' },
+  switches: { ko: '리모트 스위치', en: 'Remote switches', desc: '영상 정지(프리즈), 사진 캡처, 특수광 관찰 전환 같은 영상 장치 기능을 지정해 쓰는 버튼입니다.' },
+  biopsy: { ko: '겸자 채널 입구', en: 'Instrument channel port', desc: '생검 겸자나 올가미 같은 처치구를 넣는 입구입니다. 고무 마개(겸자 밸브)가 공기와 액체가 새는 것을 막습니다.' },
+  tube: { ko: '삽입부', en: 'Insertion tube', desc: '몸 안으로 들어가는 유연한 관입니다. 겉면의 눈금으로 삽입 깊이를 읽고, 조작부에서 비튼 힘이 선단까지 전달되도록 만들어집니다.', spec: '유효 길이 예: 1,330 / 1,680 mm' },
+  inner: { ko: '내부 구성', en: 'Internal channels', desc: '삽입부 안에는 앵글 와이어 4가닥, 빛을 보내는 광섬유 다발 2개, 영상 신호 케이블, 겸자 채널, 송기·송수관이 함께 지나갑니다.' },
+  bend: { ko: '만곡부', en: 'Bending section', desc: '작은 금속 링 여러 개가 관절처럼 이어진 구간입니다. 앵글 와이어가 당겨지면 이 부분만 휘어져 선단 방향이 바뀝니다.' },
+  tip: { ko: '선단부', en: 'Distal end', desc: '카메라 렌즈, 조명창, 노즐, 채널 출구가 모여 있는 끝부분입니다.', spec: '외경 예: 약 12–13 mm' },
+  lens: { ko: '대물렌즈', en: 'Objective lens', desc: '렌즈 뒤의 이미지 센서(CMOS)가 점막을 촬영해 영상 장치로 보냅니다.' },
+  light: { ko: '라이트 가이드', en: 'Light guide', desc: '광원 장치의 빛을 광섬유 다발로 전달해 장 안을 비춥니다. 렌즈 양옆에 두 개가 있습니다.' },
+  nozzle: { ko: '송기·송수 노즐', en: 'Air/water nozzle', desc: '렌즈 표면으로 물과 공기를 뿜어 시야를 깨끗하게 닦습니다.' },
+  outlet: { ko: '겸자 채널 출구', en: 'Channel outlet', desc: '처치구가 나오고 흡인이 이루어지는 구멍입니다.', spec: '내경 예: 약 3.2–3.8 mm' },
+  jet: { ko: '워터젯', en: 'Water jet', desc: '점막을 향해 물을 세게 뿌려 씻어내는 별도 출구입니다. 일부 기종에 있습니다.' },
+  cord: { ko: '유니버설 코드', en: 'Universal cord', desc: '조작부와 광원·영상 장치를 잇는 케이블입니다. 광섬유, 신호선, 송기·송수관이 이 안으로 지나갑니다.' },
+  connector: { ko: '내시경 커넥터', en: 'Endoscope connector', desc: '광원·영상 장치에 꽂는 단자입니다. 빛을 받는 라이트 가이드 봉, 전기 접점, 송기 단자가 있습니다.' },
+};
+const CHIP_ORDER = ['control', 'knobUD', 'knobRL', 'suction', 'airwater', 'biopsy', 'tube', 'bend', 'tip', 'cord', 'connector'];
+
+const movers = [];     // 분해 때 움직이는 덩어리
+const xrayMeshes = []; // 분해 때 반투명해지는 피복
+const tags = {};       // 3D 라벨
+const tagGroups = { explode: [], tip: [], colon: [] };
+
+function addMover(obj, offset, order) { movers.push({ obj, base: obj.position.clone(), offset, order, v: 0, v0: 0 }); }
+function tagPart(id, obj) { obj.traverse((o) => { if (o.isMesh && !o.userData.partId) o.userData.partId = id; }); }
+function addTag(id, parent, pos, dx, dy, group, text) {
+  const info = text || INFO[id];
+  const el = document.createElement('div'); el.className = 'tag';
+  const line = document.createElement('i'); line.className = 'tag-line';
+  const box = document.createElement('button'); box.type = 'button'; box.className = 'tag-box'; box.tabIndex = -1;
+  box.innerHTML = `<b>${info.ko}</b><span>${info.en}</span>`;
+  box.style.transform = `translate(${dx < 0 ? '-100%' : '0'}, -50%)`;
+  box.addEventListener('click', (e) => { e.stopPropagation(); if (group !== 'colon') selectPart(id); });
+  el.append(line, box);
+  const obj = new CSS2DObject(el); obj.position.copy(pos); parent.add(obj);
+  const t = { id, obj, el, box, line, group, dx, dy }; tags[id + ':' + group] = t; tagGroups[group].push(t);
+  placeTag(t);
+  return t;
+}
+function placeTag(t) {
+  const f = wide.matches ? 1 : 0.6, dx = t.dx * f, dy = t.dy * f;
+  t.line.style.width = Math.hypot(dx, dy) + 'px';
+  t.line.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+  t.box.style.left = dx + 'px'; t.box.style.top = dy + 'px';
+}
+function showTagGroup(group, on) { for (const t of tagGroups[group]) { t.el.classList.toggle('on', on); t.box.tabIndex = on ? 0 : -1; } }
+
+/* ================================================================
+   대장내시경 모델
+   ================================================================ */
+const device = new THREE.Group();
+scene.add(device);
+
+// --- 조작부 몸체 (회전체) ---
+const PROFILE = [[0, -0.36], [0.2, -0.36], [0.238, -0.3], [0.252, -0.1], [0.262, 0.25], [0.27, 0.6], [0.282, 0.95], [0.3, 1.2], [0.3, 1.32],
+  [0.33, 1.4], [0.385, 1.55], [0.41, 1.75], [0.415, 2.1], [0.405, 2.4], [0.375, 2.6], [0.32, 2.74], [0.22, 2.82], [0, 2.85]];
+const ZS = 0.86;
+function radiusAt(y) {
+  for (let i = 1; i < PROFILE.length; i++) {
+    const [r0, y0] = PROFILE[i - 1], [r1, y1] = PROFILE[i];
+    if (y1 > y0 && y >= y0 && y <= y1) return r0 + (r1 - r0) * (y - y0) / (y1 - y0);
+  }
+  return 0;
+}
+const control = new THREE.Group(); device.add(control);
+{
+  const body = new THREE.Mesh(new THREE.LatheGeometry(PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 72), M.body);
+  body.rotation.y = Math.PI; body.scale.z = ZS; control.add(body);
+  for (const [r, y, tube] of [[0.302, 1.31, 0.016], [0.205, -0.345, 0.011]]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 12, 72), M.metal);
+    ring.rotation.x = Math.PI / 2; ring.position.y = y; ring.scale.y = ZS; control.add(ring);
+  }
+  // 손잡이 홈
+  for (const y of [0.35, 0.5, 0.65, 0.8]) {
+    const g = new THREE.Mesh(new THREE.TorusGeometry(radiusAt(y) + 0.002, 0.006, 6, 64), M.bodyLight);
+    g.rotation.x = Math.PI / 2; g.position.y = y; g.scale.y = ZS; control.add(g);
+  }
+  // 노브 축과 받침
+  const collar = mesh(cyl(0.13, 0.15, 0.06), M.bodyLight, 0.43, 2.05, 0); collar.rotation.z = Math.PI / 2; control.add(collar);
+  const shaft = mesh(cyl(0.05, 0.05, 0.42), M.metal, 0.6, 2.05, 0); shaft.rotation.z = Math.PI / 2; control.add(shaft);
+}
+tagPart('control', control);
+
+// --- 꺾임 방지 부츠 ---
+const boot = new THREE.Group(); device.add(boot);
+{
+  boot.add(mesh(cyl(0.205, 0.128, 0.72, 40), M.rubber, 0, -0.72, 0));
+  for (let i = 0; i < 5; i++) {
+    const y = -0.5 - i * 0.12, r = lerp(0.205, 0.128, (-0.36 - y) / 0.72) + 0.004;
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(r, 0.01, 6, 48), M.rubber); rib.rotation.x = Math.PI / 2; rib.position.y = y; boot.add(rib);
+  }
+}
+tagPart('boot', boot);
+
+// --- 앵글 노브 ---
+function knobGeometry(R, notches, depth, notchDepth) {
+  const shape = new THREE.Shape(); const N = 240;
+  for (let i = 0; i <= N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const k = Math.pow(0.5 + 0.5 * Math.cos(notches * a), 4);
+    const r = R - notchDepth * k;
+    i ? shape.lineTo(Math.cos(a) * r, Math.sin(a) * r) : shape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: depth * 0.22, bevelSize: 0.012, bevelSegments: 3, curveSegments: 1 });
+  geo.translate(0, 0, -depth / 2); geo.rotateY(Math.PI / 2);
+  return geo;
+}
+const KNOB_Y = 2.05;
+const lockLever = new THREE.Group(); lockLever.position.set(0.49, KNOB_Y, 0); device.add(lockLever);
+{
+  const hub = mesh(cyl(0.1, 0.1, 0.035), M.knob); hub.rotation.z = Math.PI / 2; lockLever.add(hub);
+  const arm = mesh(new THREE.BoxGeometry(0.03, 0.36, 0.07), M.knob, 0, -0.24, 0); lockLever.add(arm);
+  const tipK = mesh(cyl(0.05, 0.05, 0.06), M.bodyLight, 0, -0.43, 0); tipK.rotation.z = Math.PI / 2; lockLever.add(tipK);
+  lockLever.rotation.x = 0.75;
+}
+tagPart('lock', lockLever);
+addMover(lockLever, V(0.42, 0, 0), 0.08);
+
+const knobUD = new THREE.Group(); knobUD.position.set(0.585, KNOB_Y, 0); device.add(knobUD);
+{
+  knobUD.add(new THREE.Mesh(knobGeometry(0.4, 10, 0.075, 0.06), M.knob));
+  const hub = mesh(cyl(0.12, 0.12, 0.11), M.metal); hub.rotation.z = Math.PI / 2; knobUD.add(hub);
+  knobUD.add(mesh(new THREE.BoxGeometry(0.012, 0.11, 0.028), M.white, 0.057, 0.27, 0));
+}
+tagPart('knobUD', knobUD);
+addMover(knobUD, V(0.78, 0, 0), 0.14);
+
+const knobRL = new THREE.Group(); knobRL.position.set(0.735, KNOB_Y, 0); device.add(knobRL);
+{
+  knobRL.add(new THREE.Mesh(knobGeometry(0.27, 7, 0.065, 0.05), M.knob));
+  const lockK = mesh(cyl(0.075, 0.08, 0.08), M.bodyLight, 0.07, 0, 0); lockK.rotation.z = Math.PI / 2; knobRL.add(lockK);
+  knobRL.add(mesh(new THREE.BoxGeometry(0.06, 0.14, 0.018), M.bodyLight, 0.1, 0, 0));
+  knobRL.add(mesh(new THREE.BoxGeometry(0.012, 0.08, 0.024), M.white, 0.052, 0.19, 0));
+}
+tagPart('knobRL', knobRL);
+addMover(knobRL, V(1.38, 0, 0), 0.2);
+
+// --- 밸브 (흡인 / 송기·송수) ---
+class Helix extends THREE.Curve {
+  constructor(r, h, turns) { super(); this.r = r; this.h = h; this.turns = turns; }
+  getPoint(t, target = new THREE.Vector3()) { const a = t * this.turns * Math.PI * 2; return target.set(Math.cos(a) * this.r, t * this.h - this.h / 2, Math.sin(a) * this.r); }
+}
+const springGeo = new THREE.TubeGeometry(new Helix(0.04, 0.15, 6), 180, 0.0055, 6, false);
+function makeValve(id, y, capMat, airHole) {
+  const dir = V(0, 0.42, 1).normalize();
+  const g = new THREE.Group(); g.position.set(0, y, radiusAt(y) * ZS - 0.025); orientY(g, dir); device.add(g);
+  g.add(mesh(cyl(0.088, 0.094, 0.1), M.metal, 0, 0.03, 0));
+  const cap = new THREE.Group(); cap.position.y = 0.105; g.add(cap);
+  cap.add(mesh(cyl(0.076, 0.079, 0.055), capMat));
+  const dome = mesh(new THREE.SphereGeometry(0.076, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), capMat, 0, 0.027, 0); dome.scale.y = 0.32; cap.add(dome);
+  if (airHole) {
+    cap.add(mesh(cyl(0.02, 0.02, 0.012, 20), M.hole, 0, 0.052, 0));
+    const lip = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.005, 8, 24), M.metal); lip.rotation.x = Math.PI / 2; lip.position.y = 0.051; cap.add(lip);
+  }
+  cap.add(mesh(cyl(0.018, 0.018, 0.26, 12), M.metal, 0, -0.15, 0));
+  const spring = new THREE.Mesh(springGeo, M.wire); spring.position.y = 0.0; g.add(spring);
+  tagPart(id, g);
+  addMover(cap, V(0, 0.78, 0), id === 'suction' ? 0.22 : 0.28);
+  addMover(spring, V(0, 0.45, 0), id === 'suction' ? 0.25 : 0.31);
+  return { group: g, cap };
+}
+const suction = makeValve('suction', 2.43, M.suction, false);
+const airwater = makeValve('airwater', 2.18, M.airWater, true);
+
+// --- 리모트 스위치 ---
+const switches = new THREE.Group(); device.add(switches);
+for (const [x, z] of [[0.085, 0.07], [-0.085, 0.07], [0.085, -0.075], [-0.085, -0.075]]) switches.add(mesh(cyl(0.042, 0.046, 0.05, 24), M.key, x, 2.858, z * ZS));
+tagPart('switches', switches);
+addMover(switches, V(0, 0.42, 0), 0.34);
+
+// --- 겸자 채널 입구 ---
+const biopsy = new THREE.Group(); device.add(biopsy);
+const biopsyDir = V(0, 0.55, 1).normalize();
+let biopsyCap;
+{
+  biopsy.position.set(0, 0.06, radiusAt(0.06) * ZS - 0.03); orientY(biopsy, biopsyDir);
+  biopsy.add(mesh(cyl(0.056, 0.066, 0.24), M.bodyLight, 0, 0.07, 0));
+  biopsy.add(mesh(cyl(0.061, 0.061, 0.03), M.metal, 0, 0.19, 0));
+  biopsyCap = new THREE.Group(); biopsyCap.position.y = 0.225; biopsy.add(biopsyCap);
+  biopsyCap.add(mesh(cyl(0.072, 0.074, 0.06), M.biopsy));
+  biopsyCap.add(mesh(new THREE.BoxGeometry(0.05, 0.006, 0.008), M.hole, 0, 0.031, 0));
+}
+tagPart('biopsy', biopsy);
+addMover(biopsyCap, V(0, 0.6, 0), 0.4);
+
+// --- 유니버설 코드 + 커넥터 ---
+const cordGroup = new THREE.Group(); device.add(cordGroup);
+const cordCurve = new THREE.CatmullRomCurve3([V(-0.68, 1.8, 0), V(-1.05, 1.76, -0.02), V(-1.6, 1.42, -0.15), V(-2.05, 0.62, -0.3), V(-2.25, -0.4, -0.25), V(-2.2, -1.3, 0.0), V(-2.05, -1.9, 0.25)], false, 'centripetal');
+{
+  const cordBoot = mesh(cyl(0.095, 0.14, 0.36), M.rubber, -0.57, 1.8, 0); cordBoot.rotation.z = Math.PI / 2;
+  control.add(cordBoot); cordBoot.userData.partId = 'cord';
+  cordGroup.add(new THREE.Mesh(new THREE.TubeGeometry(cordCurve, 220, 0.085, 18, false), M.cord));
+}
+tagPart('cord', cordGroup);
+addMover(cordGroup, V(-0.35, 0.05, -0.2), 0.45);
+
+const connector = new THREE.Group(); device.add(connector);
+{
+  const end = cordCurve.getPointAt(1), dir = cordCurve.getTangentAt(1);
+  connector.position.copy(end); orientY(connector, dir);
+  connector.add(mesh(cyl(0.13, 0.09, 0.26), M.rubber, 0, 0.1, 0));
+  connector.add(mesh(cyl(0.26, 0.26, 0.5, 40), M.cord, 0, 0.47, 0));
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.262, 0.012, 8, 48), M.metal); band.rotation.x = Math.PI / 2; band.position.y = 0.26; connector.add(band);
+  connector.add(mesh(cyl(0.2, 0.24, 0.06, 40), M.metal, 0, 0.75, 0));
+  connector.add(mesh(cyl(0.034, 0.034, 0.36, 20), M.metal, 0, 0.95, 0));
+  connector.add(mesh(cyl(0.05, 0.05, 0.16, 20), M.darkMetal, 0.12, 0.85, 0));
+  const elec = mesh(cyl(0.095, 0.095, 0.12, 32), M.bodyLight, 0, 0.47, 0.29); elec.rotation.x = Math.PI / 2; connector.add(elec);
+  const pins = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 8, 32), M.gold); pins.position.set(0, 0.47, 0.352); connector.add(pins);
+}
+tagPart('connector', connector);
+addMover(connector, V(-0.8, -0.6, 0.3), 0.55);
+
+// --- 삽입부 ---
+const tubeGroup = new THREE.Group(); device.add(tubeGroup);
+const tubeCurve = new THREE.CatmullRomCurve3([V(0, -0.95, 0), V(0, -1.5, 0.04), V(0.3, -2.25, 0.3), V(1.2, -2.75, 0.55), V(2.5, -2.75, 0.5),
+  V(3.55, -2.2, 0.25), V(4.05, -1.15, 0), V(3.98, -0.05, 0.05), V(3.72, 0.72, 0.28)], false, 'centripetal');
+tubeCurve.arcLengthDivisions = 1000;
+const TUBE_R = 0.11;
+markTex.repeat.set(15, 1);
+const innerGroup = new THREE.Group();
+{
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(tubeCurve, 420, TUBE_R, 26, false), M.tube);
+  tubeGroup.add(tube); tube.userData.xray = true;
+  // 안쪽 구성: 같은 경로를 단면 위치만 옮겨 따라감
+  const samples = 160; const frames = tubeCurve.computeFrenetFrames(samples, false);
+  const offsetCurve = (dx, dy) => {
+    const pts = [];
+    for (let i = 0; i <= samples; i++) {
+      const p = tubeCurve.getPointAt(i / samples);
+      pts.push(p.addScaledVector(frames.normals[i], dx).addScaledVector(frames.binormals[i], dy));
+    }
+    return new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+  };
+  const inner = [
+    [0.03, -0.025, 0.036, M.channel], [-0.047, -0.035, 0.014, M.airTube], [-0.045, 0.03, 0.02, M.fiber], [0.055, 0.035, 0.02, M.fiber], [-0.004, 0.055, 0.018, M.cable],
+  ];
+  for (const a of [45, 135, 225, 315]) inner.push([Math.cos(a * DEG) * 0.083, Math.sin(a * DEG) * 0.083, 0.005, M.wire]);
+  for (const [dx, dy, r, mat] of inner) innerGroup.add(new THREE.Mesh(new THREE.TubeGeometry(offsetCurve(dx, dy), 260, r, 8, false), mat));
+  innerGroup.visible = false;
+  tubeGroup.add(innerGroup);
+  tagPart('inner', innerGroup);
+}
+tagPart('tube', tubeGroup);
+const TUBE_OFFSET = V(0.5, -0.5, 0.45);
+addMover(tubeGroup, TUBE_OFFSET.clone(), 0.5);
+
+// --- 만곡부 + 선단부 ---
+const LINK_N = 12, LINK_L = 0.086;
+function makeBendChain(r, sheathMat) {
+  const root = new THREE.Group(); const links = []; let parent = root;
+  const sheathGeo = new THREE.CylinderGeometry(r, r, LINK_L, 28, 1, true); sheathGeo.translate(0, LINK_L / 2, 0);
+  const jointGeo = new THREE.SphereGeometry(r, 28, 14);
+  const ringGeo = new THREE.TorusGeometry(r * 0.8, 0.012, 8, 28); ringGeo.rotateX(Math.PI / 2); ringGeo.translate(0, LINK_L / 2, 0);
+  const wireGeo = new THREE.CylinderGeometry(0.0055, 0.0055, LINK_L, 5); wireGeo.translate(0, LINK_L / 2, 0);
+  for (let i = 0; i < LINK_N; i++) {
+    const link = new THREE.Group(); if (i > 0) link.position.y = LINK_L;
+    const sheath = new THREE.Mesh(sheathGeo, sheathMat), joint = new THREE.Mesh(jointGeo, sheathMat);
+    sheath.userData.xray = joint.userData.xray = true;
+    link.add(sheath, joint, new THREE.Mesh(ringGeo, M.ring));
+    for (const [x, z] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) link.add(mesh(wireGeo, M.wire, x * r * 0.62, 0, z * r * 0.62));
+    parent.add(link); links.push(link); parent = link;
+  }
+  const end = new THREE.Group(); end.position.y = LINK_L; parent.add(end);
+  return { root, links, end };
+}
+
+function makeTip(withMovers) {
+  // 로컬 축: +Y = 앞(시야 방향), +Z = 영상의 위쪽, +X = 오른쪽
+  const tip = new THREE.Group();
+  const prof = [[0, 0], [0.112, 0], [0.118, 0.02], [0.118, 0.165], [0.113, 0.192], [0.1, 0.2], [0, 0.2]].map(([r, y]) => new THREE.Vector2(r, y));
+  const shell = new THREE.Mesh(new THREE.LatheGeometry(prof, 48), M.tipBody); tip.add(shell);
+  const face = 0.2;
+  const parts = {};
+  const lens = new THREE.Group(); lens.position.set(0, face, 0.05);
+  lens.add(mesh(cyl(0.04, 0.04, 0.014, 32), M.metal, 0, 0.002, 0));
+  lens.add(mesh(cyl(0.032, 0.032, 0.012, 32), M.glass, 0, 0.006, 0));
+  const dome = mesh(new THREE.SphereGeometry(0.032, 32, 10, 0, Math.PI * 2, 0, Math.PI / 2), M.glass, 0, 0.012, 0); dome.scale.y = 0.35; lens.add(dome);
+  tip.add(lens); parts.lens = lens;
+  const lights = new THREE.Group(); lights.position.y = face;
+  for (const x of [-0.07, 0.07]) lights.add(mesh(cyl(0.021, 0.021, 0.012, 24), M.lightGuide, x, 0.003, 0.028));
+  tip.add(lights); parts.light = lights;
+  const nozzle = new THREE.Group(); nozzle.position.set(0, face, -0.006);
+  nozzle.add(mesh(new THREE.BoxGeometry(0.03, 0.026, 0.022), M.metal, 0, 0.012, 0));
+  nozzle.add(mesh(new THREE.BoxGeometry(0.018, 0.012, 0.006), M.hole, 0, 0.016, 0.011));
+  tip.add(nozzle); parts.nozzle = nozzle;
+  const outlet = new THREE.Group(); outlet.position.set(0.045, face, -0.06);
+  const oRing = new THREE.Mesh(new THREE.TorusGeometry(0.031, 0.006, 8, 32), M.metal); oRing.rotation.x = Math.PI / 2; oRing.position.y = 0.002; outlet.add(oRing);
+  outlet.add(mesh(cyl(0.03, 0.03, 0.006, 32), M.hole, 0, 0.0, 0));
+  tip.add(outlet); parts.outlet = outlet;
+  const jet = new THREE.Group(); jet.position.set(-0.062, face, -0.058);
+  jet.add(mesh(cyl(0.012, 0.012, 0.008, 16), M.metal, 0, 0.002, 0));
+  jet.add(mesh(cyl(0.007, 0.007, 0.006, 16), M.hole, 0, 0.005, 0));
+  tip.add(jet); parts.jet = jet;
+  if (withMovers) {
+    for (const [id, g, d, order] of [['lens', lens, 0.34, 0.84], ['light', lights, 0.26, 0.88], ['nozzle', nozzle, 0.2, 0.9], ['outlet', outlet, 0.42, 0.92], ['jet', jet, 0.3, 0.95]]) {
+      tagPart(id, g); addMover(g, V(0, d, 0), order);
+    }
+  }
+  return { tip, parts, shell };
+}
+
+const bendChain = makeBendChain(0.112, M.bend);
+const tubeEnd = tubeCurve.getPointAt(1), tubeEndT = tubeCurve.getTangentAt(1).normalize();
+{
+  const up = V(0, 0, 1).cross(tubeEndT).normalize();          // 영상 위쪽(UP) 방향 — 화면 평면 안에서 휘도록
+  const right = tubeEndT.clone().cross(up).normalize();
+  const basis = new THREE.Matrix4().makeBasis(right, tubeEndT, up);
+  bendChain.root.position.copy(tubeEnd);
+  bendChain.root.quaternion.setFromRotationMatrix(basis);
+  device.add(bendChain.root);
+}
+tagPart('bend', bendChain.root);
+addMover(bendChain.root, TUBE_OFFSET.clone().addScaledVector(tubeEndT, 0.55), 0.64);
+
+const devTip = makeTip(true);
+bendChain.end.add(devTip.tip);
+tagPart('tip', devTip.tip);
+addMover(devTip.tip, V(0, 0.42, 0), 0.74);
+
+function applyBend(links, ud, lr) {
+  const dir = V(lr, 0, ud); const mag = dir.length();
+  if (mag < 1e-4) { for (const l of links) l.quaternion.identity(); return; }
+  const axis = Y_AXIS.clone().cross(dir.normalize()).normalize();
+  const per = (mag * DEG) / links.length;
+  for (const l of links) l.quaternion.setFromAxisAngle(axis, per);
+}
+
+// --- 라벨 (분해도) ---
+{
+  addTag('control', control, V(-0.24, 0.75, 0.12), -78, -10, 'explode');
+  addTag('knobUD', knobUD, V(0, 0.4, 0), 40, -46, 'explode');
+  addTag('knobRL', knobRL, V(0.04, -0.27, 0), 46, 30, 'explode');
+  addTag('lock', lockLever, V(0, -0.43, 0), 40, 34, 'explode');
+  addTag('suction', suction.cap, V(0, 0.05, 0), -70, -40, 'explode');
+  addTag('airwater', airwater.cap, V(0, 0.05, 0), -86, 8, 'explode');
+  addTag('switches', switches, V(0, 2.9, 0), 40, -40, 'explode');
+  addTag('biopsy', biopsyCap, V(0, 0.04, 0), -70, 34, 'explode');
+  addTag('tube', tubeGroup, tubeCurve.getPointAt(0.2), -74, 14, 'explode');
+  addTag('inner', tubeGroup, tubeCurve.getPointAt(0.74), 56, 30, 'explode');
+  addTag('bend', bendChain.links[5], V(0.11, 0.04, 0), 56, 30, 'explode');
+  addTag('tip', devTip.tip, V(0.12, 0.1, 0), 50, -36, 'explode');
+  addTag('cord', cordGroup, cordCurve.getPointAt(0.42), -56, -26, 'explode');
+  addTag('connector', connector, V(0.26, 0.5, 0), -60, 34, 'explode');
+  // 선단부 확대용
+  const t = devTip.parts;
+  addTag('lens', t.lens, V(0, 0.01, 0.0), -80, 44, 'tip');
+  addTag('light', t.light, V(0.07, 0.006, 0.028), 70, 26, 'tip');
+  addTag('nozzle', t.nozzle, V(0, 0.02, 0), -24, -72, 'tip');
+  addTag('outlet', t.outlet, V(0.02, 0, -0.02), 64, 40, 'tip');
+  addTag('jet', t.jet, V(0, 0.006, 0), 60, -44, 'tip');
+}
+
+// 부품마다 재질을 따로 갖게 해서 강조 표시가 다른 부품으로 번지지 않게 함
+const partMeshes = {};
+device.traverse((o) => {
+  if (!o.isMesh) return;
+  o.material = o.material.clone();
+  o.userData.baseEmissive = o.material.emissive ? o.material.emissive.clone() : null;
+  o.userData.baseEmissiveI = o.material.emissiveIntensity ?? 0;
+  if (o.userData.xray) xrayMeshes.push(o);
+  const id = o.userData.partId; if (id) (partMeshes[id] ||= []).push(o);
+});
+
+// 모델 가운데 정렬 (+ 분해했을 때의 크기도 미리 구해 둠)
+const devBox = new THREE.Box3().setFromObject(device);
+const devCenter = devBox.getCenter(V());
+const devSize = devBox.getSize(V());
+for (const m of movers) m.obj.position.copy(m.base).add(m.offset);
+const exBox = new THREE.Box3().setFromObject(device);
+for (const m of movers) m.obj.position.copy(m.base);
+const exCenter = exBox.getCenter(V()).sub(devCenter), exSize = exBox.getSize(V());
+device.position.sub(devCenter);
+
+/* ================================================================
+   대장 (진입 시뮬레이션)
+   ================================================================ */
+const colon = new THREE.Group(); colon.visible = false; scene.add(colon);
+const ANUS = V(0, -3.3, 0.5);
+const PATH_PTS = [V(0.15, -5.8, 2.9), V(0.1, -4.4, 1.5), ANUS, V(0, -2.7, 0.15), V(0.15, -2.1, 0), V(0.62, -1.62, 0.5), V(1.3, -1.92, 0.92),
+  V(1.02, -1.1, 1.12), V(1.9, -1.2, 0.52), V(2.55, -0.6, 0), V(2.75, 0.6, -0.25), V(2.7, 1.7, -0.35), V(2.4, 2.45, -0.2), V(1.8, 2.52, 0.25),
+  V(1.0, 1.72, 0.7), V(0, 1.38, 0.85), V(-1.0, 1.72, 0.7), V(-1.9, 2.35, 0.2), V(-2.5, 2.12, -0.2), V(-2.7, 1.0, -0.25), V(-2.7, -0.2, -0.15),
+  V(-2.55, -1.2, 0), V(-2.35, -1.95, 0.15)];
+const path = new THREE.CatmullRomCurve3(PATH_PTS, false, 'centripetal');
+path.arcLengthDivisions = 3000;
+const PATH_LEN = path.getLength();
+const FRAME_N = 3000;
+const pathFrames = (() => {
+  const T = [], N = [], B = [];
+  let n = V(1, 0, 0);
+  for (let i = 0; i <= FRAME_N; i++) {
+    const t = path.getTangentAt(i / FRAME_N).normalize();
+    n = n.clone().addScaledVector(t, -n.dot(t)).normalize();
+    T.push(t); N.push(n); B.push(t.clone().cross(n).normalize());
+  }
+  return { T, N, B };
+})();
+const frameAt = (u) => { const i = clamp(Math.round(u * FRAME_N), 0, FRAME_N); return { T: pathFrames.T[i], N: pathFrames.N[i], B: pathFrames.B[i] }; };
+const nearestU = (p) => { let best = 0, bd = Infinity; for (let i = 0; i <= 2000; i++) { const d = path.getPointAt(i / 2000).distanceToSquared(p); if (d < bd) { bd = d; best = i / 2000; } } return best; };
+const U_ANUS = nearestU(ANUS);
+const U_END = 1 - 0.3 / PATH_LEN;
+
+const SEGMENTS = [
+  { ko: '직장', en: 'Rectum', at: ANUS, desc: '항문을 지나 처음 만나는 곳으로 비교적 넓고 곧습니다.', tag: [-70, 18] },
+  { ko: 'S상 결장', en: 'Sigmoid colon', at: V(0.62, -1.62, 0.5), desc: '가장 구불구불한 구간입니다. 관이 고리(루프) 모양으로 늘어나기 쉬워 조심스럽게 지나갑니다.', tag: [70, 40] },
+  { ko: '하행 결장', en: 'Descending colon', at: V(2.55, -0.6, 0), desc: '몸 왼쪽을 따라 위로 곧게 올라가는 구간입니다.', tag: [64, 10] },
+  { ko: '비장 만곡부', en: 'Splenic flexure', at: V(2.7, 1.7, -0.35), desc: '비장 근처에서 장이 급하게 꺾이는 곳입니다. 선단을 크게 꺾어 다음 길을 찾습니다.', tag: [60, -34] },
+  { ko: '횡행 결장', en: 'Transverse colon', at: V(1.8, 2.52, 0.25), desc: '배를 가로지르는 구간입니다. 세 줄의 결장띠 때문에 안에서 보면 단면이 삼각형처럼 보입니다.', tag: [0, -60] },
+  { ko: '간 만곡부', en: 'Hepatic flexure', at: V(-1.9, 2.35, 0.2), desc: '간 아래에서 다시 꺾이는 곳입니다. 벽 너머로 간이 푸르스름하게 비치기도 합니다.', tag: [-60, -34] },
+  { ko: '상행 결장', en: 'Ascending colon', at: V(-2.7, 1.0, -0.25), desc: '몸 오른쪽을 따라 아래로 내려가는 넓은 구간입니다.', tag: [-66, 10] },
+  { ko: '맹장', en: 'Cecum', at: null, desc: '대장의 막다른 끝입니다. 충수 개구부와 회맹판을 확인하면 삽입을 마치고, 천천히 빼면서 관찰합니다.', tag: [-60, 36] },
+];
+for (const s of SEGMENTS) s.u = s.at ? nearestU(s.at) : 1 - 1.1 / PATH_LEN;
+SEGMENTS[0].u = U_ANUS;
+const segIndexAt = (u) => { let k = 0; for (let i = 0; i < SEGMENTS.length; i++) if (u >= SEGMENTS[i].u) k = i; return k; };
+
+const mucosaTex = makeMucosaTexture();
+{
+  const segs = 900, radial = 56;
+  const L = (U_END + 0.3 / PATH_LEN - U_ANUS) * PATH_LEN;
+  const pos = [], uv = [], idx = [];
+  const P = V(), dir = V();
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs, u = lerp(U_ANUS, 1, t), d = t * L;
+    path.getPointAt(u, P); const { N, B } = frameAt(u);
+    const fold = Math.pow(0.5 + 0.5 * Math.cos((2 * Math.PI * d) / 0.42), 10) * 0.2 * smoothstep(0.05, 0.12, t);
+    let base = 0.34 * (1 + 0.28 * (1 - smoothstep(0, 0.07, t))) * (1 + 0.28 * smoothstep(0.9, 0.97, t));
+    if (t > 0.975) base *= Math.sqrt(Math.max(0, 1 - Math.pow((t - 0.975) / 0.025, 2)));
+    for (let j = 0; j <= radial; j++) {
+      const th = (j / radial) * Math.PI * 2;
+      const tri = 1 + 0.075 * Math.cos(3 * th + t * 5);
+      const r = base * tri * (1 - fold * (0.55 + 0.45 * Math.cos(3 * th + t * 5 + Math.PI)));
+      dir.copy(N).multiplyScalar(Math.cos(th)).addScaledVector(B, Math.sin(th));
+      pos.push(P.x + dir.x * r, P.y + dir.y * r, P.z + dir.z * r);
+      uv.push(d / 1.2, (j / radial) * 2);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+    const a = i * (radial + 1) + j, b = a + radial + 1;
+    idx.push(a, a + 1, b, b, a + 1, b + 1);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  { // 이음매(0°=360°) 법선을 평균내서 줄무늬가 안 보이게
+    const n = geo.attributes.normal; const t = V();
+    for (let i = 0; i <= segs; i++) {
+      const a = i * (radial + 1), b = a + radial;
+      t.set(n.getX(a) + n.getX(b), n.getY(a) + n.getY(b), n.getZ(a) + n.getZ(b)).normalize();
+      n.setXYZ(a, t.x, t.y, t.z); n.setXYZ(b, t.x, t.y, t.z);
+    }
+    n.needsUpdate = true;
+  }
+
+  // 바깥면: 메인 화면에서 반투명 해부도로 보임 (레이어 1)
+  const outer = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color: 0xe9a1a0, roughness: 0.45, transparent: true, opacity: 0.3, depthWrite: false, clearcoat: 0.4 }));
+  outer.layers.set(1); colon.add(outer);
+  // 안쪽 면: 내시경 화면 전용 (레이어 2) — 선단 조명만 받음
+  const inner = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ map: mucosaTex, side: THREE.BackSide, roughness: 0.5, clearcoat: 1, clearcoatRoughness: 0.14, envMapIntensity: 0 }));
+  inner.layers.set(2); colon.add(inner);
+}
+// 예시 용종 (횡행 결장)
+const POLYP_U = lerp(SEGMENTS[4].u, SEGMENTS[5].u, 0.55);
+{
+  const P = path.getPointAt(POLYP_U); const { N, B } = frameAt(POLYP_U);
+  const d = N.clone().multiplyScalar(Math.cos(2.2)).addScaledVector(B, Math.sin(2.2));
+  const polyp = new THREE.Mesh(new THREE.SphereGeometry(0.075, 24, 16), new THREE.MeshPhysicalMaterial({ color: 0xd8696a, roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.1, envMapIntensity: 0 }));
+  polyp.position.copy(P).addScaledVector(d, 0.27); polyp.scale.set(1, 0.85, 1); polyp.layers.set(2); colon.add(polyp);
+}
+for (const [i, s] of SEGMENTS.entries()) {
+  const u = i < SEGMENTS.length - 1 ? lerp(s.u, SEGMENTS[i + 1].u, 0.45) : lerp(s.u, 1, 0.5);
+  s.tagRef = addTag('seg' + i, colon, path.getPointAt(u), s.tag[0], s.tag[1], 'colon', { ko: s.ko, en: s.en });
+}
+
+// 내시경 화면 카메라와 조명
+const pipCam = new THREE.PerspectiveCamera(108, 1, 0.01, 30);
+pipCam.layers.set(2);
+const tipLamp = new THREE.PointLight(0xfff0dc, 0.55, 0, 2); tipLamp.layers.set(2); scene.add(tipLamp);
+const pipAmbient = new THREE.AmbientLight(0x5a1e1a, 0.12); pipAmbient.layers.set(2); scene.add(pipAmbient);
+const glowLamp = new THREE.PointLight(0xffe2c2, 0.9, 2.2, 2); colon.add(glowLamp);
+const pipFog = new THREE.Fog(0x160404, 1.2, 6.5);
+const pipRenderer = new THREE.WebGLRenderer({ antialias: true });
+pipRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+pipRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+pipRenderer.setClearColor(0x070202, 1);
+$('#pipView').appendChild(pipRenderer.domElement);
+let pipSize = '';
+
+// 진입용 내시경 (경로를 따라 매 프레임 다시 만듦)
+const insertTex = markTex.clone(); insertTex.needsUpdate = true;
+const insTubeMat = new THREE.MeshPhysicalMaterial({ map: insertTex, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.2 });
+const insBendMat = new THREE.MeshPhysicalMaterial({ color: 0x1d2024, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.12 });
+const insTube = new THREE.Mesh(new THREE.BufferGeometry(), insTubeMat);
+const insBend = new THREE.Mesh(new THREE.BufferGeometry(), insBendMat);
+const insTip = makeTip(false).tip; insTip.scale.setScalar(0.76);
+colon.add(insTube, insBend, insTip);
+class SubCurve extends THREE.Curve {
+  constructor(c, a, b) { super(); this.c = c; this.a = a; this.b = b; }
+  getPoint(t, target = new THREE.Vector3()) { return this.c.getPointAt(lerp(this.a, this.b, t), target); }
+}
+const INS_R = 0.085, BEND_LEN = 0.7, TIP_LEN = 0.2 * 0.76;
+
+/* ================================================================
+   상태
+   ================================================================ */
+const state = {
+  mode: 'device',
+  rotating: false,
+  exploded: false,
+  bendOpen: false,
+  closeup: false,
+  selected: null,
+  bend: { ud: 0, lr: 0, tud: 0, tlr: 0, demo: null },
+  ex: { to: 0, start: 0, dur: 0.01 },
+  xray: 0,
+  ins: { p: 0, playing: false, dir: 1, elapsed: 0, shownP: -1, done: false },
+  tween: null,
+  vo: { x: 0, y: 0 },
+  userMoved: false,
+};
+
+/* ================================================================
+   카메라
+   ================================================================ */
+function freeRect() {
+  const w = innerWidth, h = innerHeight;
+  let l = 0, t = 0, r = w, b = h;
+  const head = $('#head').getBoundingClientRect(), dock = $('#status').getBoundingClientRect();
+  b = Math.min(b, dock.top - 6);
+  if (wide.matches) {
+    const side = $('#side').getBoundingClientRect();
+    if (side.width > 0) r = Math.min(r, side.left - 10);
+    t = head.bottom * 0.6;
+  } else {
+    t = head.bottom + 4;
+    const side = $('#side'); const sr = side.getBoundingClientRect();
+    if (sr.height > 4) b = Math.min(b, sr.top - 6);
+    if (state.mode === 'insert') { const pr = $('#pipWrap').getBoundingClientRect(); if (pr.height > 0) t = Math.max(t, pr.bottom * 0.55); }
+  }
+  return { l, t, r, b, w: Math.max(80, r - l), h: Math.max(80, b - t) };
+}
+function fitDistance(hx, hy, hz) {
+  const fr = freeRect();
+  const vf = 2 * Math.atan(Math.tan((camera.fov * DEG) / 2) * (fr.h / innerHeight));
+  const hf = 2 * Math.atan(Math.tan((camera.fov * DEG) / 2) * camera.aspect * (fr.w / innerWidth));
+  return Math.max(hx / Math.tan(hf / 2), hy / Math.tan(vf / 2)) + hz;
+}
+function homeView(mode = state.mode) {
+  if (mode === 'insert') {
+    const d = fitDistance(3.3, 3.25, 1.2) * 1.02;
+    return { pos: V(0, -0.2, 0.3).add(V(0.05, 0.1, 1).normalize().multiplyScalar(d)), target: V(0, -0.2, 0.3) };
+  }
+  const size = state.exploded ? exSize : devSize, target = state.exploded ? exCenter.clone() : V();
+  const pad = state.exploded && !wide.matches ? 1.75 : 1.06; // 좁은 화면에선 라벨 자리를 남김
+  const d = fitDistance(size.x / 2 * pad, size.y / 2 * 1.06, size.z / 2) * 1.04;
+  return { pos: target.clone().add(V(0.3, 0.16, 1).normalize().multiplyScalar(d)), target };
+}
+function flyTo(pos, target, dur = 1.4) {
+  state.tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: target, start: nowS(), dur: reduced ? 0.01 : dur };
+}
+function flyHome(dur) { const h = homeView(); flyTo(h.pos, h.target, dur); state.userMoved = false; }
+controls.addEventListener('start', () => { state.userMoved = true; state.tween = null; });
+
+function tipCloseupView() {
+  // 굽힘을 뺀 자세에서 선단부 앞면 위치를 구함
+  const saved = bendChain.links.map((l) => l.quaternion.clone());
+  const savedPos = movers.map((m) => m.obj.position.clone());
+  for (const l of bendChain.links) l.quaternion.identity();
+  for (const m of movers) m.obj.position.copy(m.base);
+  device.updateMatrixWorld(true);
+  const m = devTip.tip.matrixWorld;
+  const face = V(0, 0.2, 0).applyMatrix4(m);
+  const fwd = V(0, 1, 0).transformDirection(m), up = V(0, 0, 1).transformDirection(m), right = V(1, 0, 0).transformDirection(m);
+  bendChain.links.forEach((l, i) => l.quaternion.copy(saved[i]));
+  movers.forEach((m, i) => m.obj.position.copy(savedPos[i]));
+  device.updateMatrixWorld(true);
+  const k = wide.matches ? 1 : 1.8;
+  return { pos: face.clone().addScaledVector(fwd, 0.82 * k).addScaledVector(right, 0.5 * k).addScaledVector(up, 0.3 * k), target: face.clone().addScaledVector(fwd, -0.1) };
+}
+
+/* ================================================================
+   UI
+   ================================================================ */
+const keys = Object.fromEntries([...document.querySelectorAll('.key')].map((b) => [b.dataset.act, b]));
+const statusEl = $('#status');
+const setStatus = (t) => { statusEl.textContent = t; };
+
+function syncUI() {
+  const ins = state.mode === 'insert';
+  keys.rotate.setAttribute('aria-pressed', String(state.rotating && !ins));
+  keys.explode.setAttribute('aria-pressed', String(state.exploded && !ins));
+  keys.assemble.setAttribute('aria-pressed', 'false');
+  keys.bend.setAttribute('aria-pressed', String(state.bendOpen && !ins));
+  keys.insert.setAttribute('aria-pressed', String(ins));
+  keys.tip.setAttribute('aria-pressed', String(state.closeup && !ins));
+  $('#pipWrap').hidden = !ins;
+  $('#insertCard').hidden = !ins;
+  $('#bendCard').hidden = ins || !state.bendOpen;
+  $('#specCard').hidden = ins || !state.exploded || state.bendOpen;
+  $('#infoCard').hidden = ins || !state.selected;
+  $('#partsCard').hidden = ins || state.bendOpen || state.exploded;
+  for (const c of document.querySelectorAll('.chip')) c.setAttribute('aria-pressed', String(c.dataset.id === state.selected));
+  controls.autoRotate = state.rotating && !ins && !state.closeup;
+}
+
+function selectPart(id) {
+  if (state.mode !== 'device' && id) return;
+  if (state.selected) for (const m of partMeshes[state.selected] || []) restoreEmissive(m);
+  state.selected = id && id !== state.selected ? id : null;
+  for (const t of Object.values(tags)) t.el.classList.toggle('sel', t.id === state.selected);
+  if (state.selected) {
+    const info = INFO[state.selected];
+    $('#infoKo').textContent = info.ko; $('#infoEn').textContent = info.en; $('#infoDesc').textContent = info.desc;
+    $('#infoSpec').hidden = !info.spec; $('#infoSpec').textContent = info.spec || '';
+    setStatus(`${info.ko}을(를) 선택했어요`);
+    if (state.selected === 'inner' && !state.exploded) doExplode();
+  }
+  syncUI();
+}
+function restoreEmissive(m) {
+  if (!m.userData.baseEmissive) return;
+  m.material.emissive.copy(m.userData.baseEmissive); m.material.emissiveIntensity = m.userData.baseEmissiveI;
+}
+
+// 칩
+const chipsEl = $('#chips');
+for (const id of CHIP_ORDER) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.id = id; b.textContent = INFO[id].ko; b.setAttribute('aria-pressed', 'false');
+  b.addEventListener('click', () => selectPart(id)); chipsEl.append(b);
+}
+$('#infoClose').addEventListener('click', () => selectPart(null));
+
+// 화면 전환
+let switching = false;
+function switchMode(mode, after) {
+  if (state.mode === mode) { after && after(); return; }
+  if (switching) return; switching = true;
+  const fade = $('#fade');
+  fade.classList.add('show');
+  setTimeout(() => {
+    if (mode === 'insert') selectPart(null);
+    state.mode = mode;
+    device.visible = mode === 'device';
+    colon.visible = mode === 'insert';
+    showTagGroup('colon', mode === 'insert');
+    syncUI();
+    requestAnimationFrame(() => {
+      const h = homeView(mode);
+      camera.position.copy(h.pos); controls.target.copy(h.target); state.tween = null; controls.update();
+      state.vo.x = innerWidth / 2 - (freeRect().l + freeRect().r) / 2; state.vo.y = innerHeight / 2 - (freeRect().t + freeRect().b) / 2;
+      fade.classList.remove('show'); switching = false;
+      after && after();
+    });
+  }, reduced ? 0 : 290);
+}
+
+// 분해 / 조립
+function setExplode(on) {
+  const t = nowS();
+  for (const m of movers) m.v0 = m.v;
+  state.ex = { to: on ? 1 : 0, start: t, dur: reduced ? 0.4 : 2.6 };
+  state.exploded = on;
+}
+function doExplode() {
+  state.closeup = false; showTagGroup('tip', false);
+  stopBendDemo(); state.bend.tud = 0; state.bend.tlr = 0;
+  setExplode(true); syncUI();
+  requestAnimationFrame(() => flyHome(1.6));
+  setStatus('기기를 부품별로 분해했어요. 부품을 누르면 설명이 나와요');
+}
+
+// 굴곡
+const DEMO = (() => {
+  const k = [[0, 0, 0], [1.5, 180, 0], [2.3, 180, 0], [3.9, -180, 0], [4.7, -180, 0], [5.9, 0, 0], [7.1, 0, 160], [7.7, 0, 160], [9.0, 0, -160], [9.6, 0, -160], [10.8, 0, 0], [11.4, 110, 0]];
+  for (let i = 1; i <= 24; i++) { const a = (i / 24) * Math.PI * 2; k.push([11.4 + i * 0.2, 110 * Math.cos(a), 110 * Math.sin(a)]); }
+  k.push([17.0, 0, 0]);
+  return k;
+})();
+function demoAt(t) {
+  for (let i = 1; i < DEMO.length; i++) {
+    if (t <= DEMO[i][0]) { const [t0, u0, l0] = DEMO[i - 1], [t1, u1, l1] = DEMO[i]; const e = easeInOut((t - t0) / (t1 - t0)); return [lerp(u0, u1, e), lerp(l0, l1, e)]; }
+  }
+  return null;
+}
+function startBendDemo() { state.bend.demo = { start: nowS() }; $('#bendDemo').textContent = '시연 멈춤'; setStatus('앵글 노브를 돌려 만곡부를 상하좌우로 꺾는 중이에요'); }
+function stopBendDemo() { state.bend.demo = null; $('#bendDemo').textContent = '자동 시연'; }
+$('#bendDemo').addEventListener('click', () => (state.bend.demo ? stopBendDemo() : startBendDemo()));
+$('#bendZero').addEventListener('click', () => { stopBendDemo(); state.bend.tud = 0; state.bend.tlr = 0; setStatus('선단을 곧게 폈어요'); });
+$('#bendUD').addEventListener('input', (e) => { stopBendDemo(); state.bend.tud = +e.target.value; });
+$('#bendLR').addEventListener('input', (e) => { stopBendDemo(); state.bend.tlr = +e.target.value; });
+
+// 진입
+const ticksEl = $('#trackTicks');
+for (const s of SEGMENTS.slice(1)) {
+  const p = (s.u - U_ANUS) / (U_END - U_ANUS);
+  const b = document.createElement('b'); b.style.left = (clamp(p, 0, 1) * 100).toFixed(2) + '%'; ticksEl.append(b);
+}
+function setInsertPlaying(on, dir = state.ins.dir) {
+  state.ins.playing = on; state.ins.dir = dir;
+  $('#insertPlay').textContent = on ? '일시정지' : (state.ins.p >= 0.999 ? '빼면서 관찰' : '계속 진입');
+}
+$('#insertPlay').addEventListener('click', () => {
+  const s = state.ins;
+  if (s.playing) { setInsertPlaying(false); setStatus('잠시 멈췄어요'); return; }
+  if (s.p >= 0.999) { setInsertPlaying(true, -1); setStatus('맹장에서 천천히 빼면서 관찰해요'); return; }
+  setInsertPlaying(true, 1); setStatus('대장 안으로 진입하는 중이에요');
+});
+$('#insertBack').addEventListener('click', () => { if (state.ins.p <= 0.001) return; setInsertPlaying(true, -1); setStatus('천천히 빼면서 점막을 관찰해요'); });
+$('#insertRestart').addEventListener('click', () => { state.ins.p = 0; state.ins.elapsed = 0; state.ins.done = false; setInsertPlaying(true, 1); setStatus('직장부터 다시 진입해요'); });
+$('#insertDepth').addEventListener('input', (e) => { state.ins.p = +e.target.value / 1000; setInsertPlaying(false); });
+
+// 독 버튼
+function exitCloseup() { if (state.closeup) { state.closeup = false; showTagGroup('tip', false); } }
+const actions = {
+  rotate() {
+    switchMode('device', () => {
+      exitCloseup();
+      state.rotating = !state.rotating; syncUI();
+      if (state.rotating) { if (state.userMoved) flyHome(1.0); setStatus('기기를 천천히 돌려 봐요. 끌어서 직접 돌릴 수도 있어요'); }
+      else setStatus('회전을 멈췄어요');
+    });
+  },
+  explode() { switchMode('device', () => { if (!state.exploded) doExplode(); else setStatus('이미 분해된 상태예요. 조립을 누르면 다시 합쳐져요'); }); },
+  assemble() {
+    switchMode('device', () => {
+      exitCloseup();
+      if (!state.exploded) { setStatus('이미 조립된 상태예요'); return; }
+      setExplode(false); syncUI(); requestAnimationFrame(() => flyHome(1.6));
+      setStatus('부품을 제자리로 조립하는 중이에요');
+    });
+  },
+  bend() {
+    switchMode('device', () => {
+      exitCloseup();
+      state.bendOpen = !state.bendOpen;
+      if (state.bendOpen) { if (state.exploded) setExplode(false); startBendDemo(); }
+      else { stopBendDemo(); state.bend.tud = 0; state.bend.tlr = 0; setStatus('굴곡 패널을 닫았어요'); }
+      syncUI(); requestAnimationFrame(() => flyHome(1.2));
+    });
+  },
+  insert() {
+    if (state.mode === 'insert') { $('#insertPlay').click(); return; }
+    exitCloseup(); stopBendDemo(); state.bendOpen = false; state.rotating = false;
+    switchMode('insert', () => {
+      if (state.ins.p >= 0.999 || state.ins.p <= 0.001) { state.ins.p = 0; state.ins.elapsed = 0; }
+      setInsertPlaying(true, 1);
+      setStatus('항문을 지나 직장으로 진입해요');
+    });
+  },
+  tip() {
+    switchMode('device', () => {
+      if (state.closeup) { exitCloseup(); syncUI(); flyHome(1.3); setStatus('전체 모습으로 돌아왔어요'); return; }
+      stopBendDemo(); state.bendOpen = false; state.bend.tud = 0; state.bend.tlr = 0; state.rotating = false;
+      if (state.exploded) setExplode(false);
+      state.closeup = true; syncUI();
+      const v = tipCloseupView(); flyTo(v.pos, v.target, 1.6);
+      setTimeout(() => state.closeup && showTagGroup('tip', true), reduced ? 0 : 1300);
+      setStatus('선단부를 확대했어요. 렌즈와 조명, 노즐, 채널 출구를 볼 수 있어요');
+    });
+  },
+  reset() {
+    const go = () => {
+      exitCloseup(); stopBendDemo(); selectPart(null);
+      state.bendOpen = false; state.rotating = false; state.bend.tud = 0; state.bend.tlr = 0;
+      if (state.exploded) setExplode(false);
+      syncUI(); requestAnimationFrame(() => flyHome(1.3));
+      setStatus('처음 상태로 돌아왔어요');
+    };
+    setInsertPlaying(false); state.ins.p = 0; state.ins.elapsed = 0;
+    switchMode('device', go);
+  },
+};
+for (const [act, b] of Object.entries(keys)) b.addEventListener('click', () => actions[act]());
+
+/* ================================================================
+   선택 (클릭) & 커서
+   ================================================================ */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+function pickAt(x, y) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObject(device, true);
+  let sheath = null;
+  for (const h of hits) {
+    const o = h.object;
+    if (!o.userData.partId) continue;
+    let hidden = false; for (let p = o; p; p = p.parent) if (!p.visible) { hidden = true; break; }
+    if (hidden) continue;
+    if (o.userData.xray && state.xray > 0.5) { sheath ||= o.userData.partId; continue; } // 반투명 피복 너머를 먼저
+    return o.userData.partId;
+  }
+  return sheath;
+}
+let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down || state.mode !== 'device') return;
+  const moved = Math.hypot(e.clientX - down[0], e.clientY - down[1]); down = null;
+  if (moved > 6) return;
+  const id = pickAt(e.clientX, e.clientY);
+  if (id) selectPart(id); else if (state.selected) selectPart(null);
+});
+let hoverQueued = false, lastMove = null;
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (e.pointerType !== 'mouse') return;
+  lastMove = e; if (hoverQueued) return; hoverQueued = true;
+  requestAnimationFrame(() => {
+    hoverQueued = false;
+    if (state.mode !== 'device' || e.buttons) { renderer.domElement.style.cursor = ''; return; }
+    renderer.domElement.style.cursor = pickAt(lastMove.clientX, lastMove.clientY) ? 'pointer' : '';
+  });
+});
+
+/* ================================================================
+   애니메이션
+   ================================================================ */
+const fmtDeg = (v) => Math.round(Math.abs(v)) + '°';
+let lastRO = '';
+function updateBend(dt, t) {
+  const b = state.bend;
+  if (b.demo) {
+    const v = demoAt(t - b.demo.start);
+    if (v) { b.tud = v[0]; b.tlr = v[1]; } else { stopBendDemo(); b.tud = 0; b.tlr = 0; setStatus('시연이 끝났어요. 슬라이더로 직접 꺾어 보세요'); }
+  }
+  b.ud = smoothTo(b.ud, b.tud, dt, b.demo ? 14 : 8);
+  b.lr = smoothTo(b.lr, b.tlr, dt, b.demo ? 14 : 8);
+  applyBend(bendChain.links, b.ud, b.lr);
+  knobUD.rotation.x = -b.ud * DEG * 0.85;
+  knobRL.rotation.x = b.lr * DEG * 0.85;
+  if (state.bendOpen) {
+    const ro = `${Math.round(b.ud)}|${Math.round(b.lr)}`;
+    if (ro !== lastRO) {
+      lastRO = ro;
+      $('#roUD').innerHTML = `<em>${b.ud < -0.5 ? 'DOWN' : 'UP'}</em>${fmtDeg(b.ud)}`;
+      $('#roLR').innerHTML = `<em>${b.lr < -0.5 ? 'L' : 'R'}</em>${fmtDeg(b.lr)}`;
+      if (b.demo) { $('#bendUD').value = Math.round(b.ud); $('#bendLR').value = Math.round(b.lr); }
+    }
+  }
+}
+
+function updateExplode(t, dt) {
+  const ex = state.ex;
+  const g = clamp((t - ex.start) / ex.dur, 0, 1);
+  const stagger = 0.5;
+  for (const m of movers) {
+    const k = ex.to === 1 ? m.order : 1 - m.order;
+    const local = clamp((g - k * stagger) / (1 - stagger), 0, 1);
+    m.v = lerp(m.v0, ex.to, easeInOut(local));
+    m.obj.position.copy(m.base).addScaledVector(m.offset, m.v);
+  }
+  state.xray = smoothTo(state.xray, ex.to === 1 && g > 0.35 ? 1 : 0, dt, 4);
+  const op = 1 - 0.8 * state.xray;
+  for (const m of xrayMeshes) m.material.opacity = op;
+  innerGroup.visible = state.xray > 0.02;
+  const labelsOn = ex.to === 1 && g > 0.85 && state.mode === 'device';
+  if (labelsOn !== updateExplode.lastOn) { showTagGroup('explode', labelsOn); updateExplode.lastOn = labelsOn; }
+}
+
+function updateHighlight(t) {
+  if (!state.selected) return;
+  const k = 0.28 + 0.22 * Math.sin(t * 4);
+  for (const m of partMeshes[state.selected] || []) {
+    if (!m.material.emissive) continue;
+    m.material.emissive.setRGB(0.04, 0.48, 0.45); m.material.emissiveIntensity = k;
+  }
+}
+
+const tmpP = V(), tmpQ = new THREE.Quaternion(), tmpM = new THREE.Matrix4();
+let lastSeg = -1;
+function updateInsertion(dt) {
+  const s = state.ins;
+  if (state.mode !== 'insert') return;
+  if (s.playing) {
+    const speed = s.dir > 0 ? 1 / 34 : 1 / 44;
+    s.p = clamp(s.p + s.dir * speed * dt, 0, 1);
+    s.elapsed += dt;
+    if (s.p >= 1 && s.dir > 0) { setInsertPlaying(false); setStatus('맹장에 도달했어요. 이제 빼면서 관찰할 수 있어요'); }
+    if (s.p <= 0 && s.dir < 0) { setInsertPlaying(false); s.dir = 1; setStatus('직장까지 빼냈어요'); }
+  }
+  if (Math.abs(s.p - s.shownP) > 1e-5) {
+    s.shownP = s.p;
+    const uTip = lerp(U_ANUS - 0.05 / PATH_LEN, U_END, s.p);
+    const uFace = uTip, uBase = uTip - TIP_LEN / PATH_LEN, uBend = uBase - BEND_LEN / PATH_LEN;
+    // 삽입관
+    const tubeCurve2 = new SubCurve(path, 0, uBend + 0.004 / PATH_LEN);
+    const tubeLen = uBend * PATH_LEN;
+    insTube.geometry.dispose();
+    insTube.geometry = new THREE.TubeGeometry(tubeCurve2, Math.max(16, Math.round(tubeLen * 14)), INS_R, 14, false);
+    const cmPerUnit = 7.2; // 화면 단위 → cm (눈금 간격만을 위한 값)
+    insertTex.repeat.x = (tubeLen * cmPerUnit) / 10;
+    insertTex.offset.x = -(((tubeLen + BEND_LEN + TIP_LEN) * cmPerUnit) / 10 % 1);
+    insBend.geometry.dispose();
+    insBend.geometry = new THREE.TubeGeometry(new SubCurve(path, uBend, uBase), 24, INS_R, 14, false);
+    // 선단: 다음 길(내강) 쪽으로 살짝 꺾여 있음
+    const P = path.getPointAt(uBase, V());
+    const ahead = path.getPointAt(Math.min(1, uFace + 0.55 / PATH_LEN), V());
+    const fwd = ahead.sub(P).normalize();
+    const fr = frameAt(uBase);
+    const up = fr.N.clone().addScaledVector(fwd, -fr.N.dot(fwd)).normalize();
+    const right = fwd.clone().cross(up).normalize();
+    tmpM.makeBasis(right, fwd, up); tmpQ.setFromRotationMatrix(tmpM);
+    insTip.position.copy(P); insTip.quaternion.copy(tmpQ);
+    const face = P.clone().addScaledVector(fwd, TIP_LEN);
+    pipCam.position.copy(face).addScaledVector(fwd, 0.005);
+    pipCam.up.copy(up); pipCam.lookAt(face.clone().add(fwd));
+    tipLamp.position.copy(face).addScaledVector(fwd, 0.03);
+    glowLamp.position.copy(face).addScaledVector(fwd, 0.1);
+    // 꺾인 정도 (바탕 관 방향 대비)
+    const baseT = frameAt(uBend).T;
+    const ud = Math.atan2(fwd.dot(frameAt(uBend).N), fwd.dot(baseT)) / DEG;
+    const lr = Math.atan2(fwd.dot(frameAt(uBend).B), fwd.dot(baseT)) / DEG;
+    $('#osdBend').innerHTML = `${ud < 0 ? 'DOWN' : 'UP'} ${fmtDeg(ud)}<br>${lr < 0 ? 'L' : 'R'} ${fmtDeg(lr)}`;
+    // 구간
+    const k = segIndexAt(uFace);
+    if (k !== lastSeg) {
+      lastSeg = k; const seg = SEGMENTS[k];
+      $('#segName').textContent = seg.ko; $('#segEn').textContent = seg.en; $('#segDesc').textContent = seg.desc;
+      $('#osdSeg').textContent = seg.en.toUpperCase();
+      SEGMENTS.forEach((sg, i) => sg.tagRef.el.classList.toggle('current', i === k));
+      $('#segCount').textContent = `구간 ${k + 1} / ${SEGMENTS.length}`;
+      if (s.playing && s.dir > 0) setStatus(`${seg.ko}에 들어왔어요`);
+    }
+    $('#osdFlag').hidden = !(POLYP_U - uFace > 0.02 / PATH_LEN && POLYP_U - uFace < 2.2 / PATH_LEN);
+    $('#trackFill').style.width = (s.p * 100).toFixed(2) + '%';
+    $('#insertDepth').value = Math.round(s.p * 1000);
+  }
+  const sec = Math.floor(s.elapsed);
+  $('#osdTime').textContent = `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+}
+
+function updateCamera(t, dt) {
+  const tw = state.tween;
+  if (tw) {
+    const e = easeInOut(clamp((t - tw.start) / tw.dur, 0, 1));
+    camera.position.lerpVectors(tw.p0, tw.p1, e);
+    controls.target.lerpVectors(tw.t0, tw.t1, e);
+    if (e >= 1) state.tween = null;
+  }
+  controls.update();
+  // 패널에 가리지 않는 영역의 가운데로 모델을 옮김
+  const fr = freeRect();
+  const tx = innerWidth / 2 - (fr.l + fr.r) / 2, ty = innerHeight / 2 - (fr.t + fr.b) / 2;
+  state.vo.x = smoothTo(state.vo.x, tx, dt, 6); state.vo.y = smoothTo(state.vo.y, ty, dt, 6);
+  camera.setViewOffset(innerWidth, innerHeight, state.vo.x, state.vo.y, innerWidth, innerHeight);
+}
+
+const pipView = $('#pipView');
+function render() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setViewport(0, 0, w, h);
+  renderer.clear();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  if (state.mode === 'insert') {
+    const pw = pipView.clientWidth, ph = pipView.clientHeight;
+    if (pw > 4) {
+      const key = pw + 'x' + ph;
+      if (key !== pipSize) { pipSize = key; pipRenderer.setSize(pw, ph); pipCam.aspect = pw / ph; pipCam.updateProjectionMatrix(); }
+      // 내시경 화면: 선단 조명과 안개만 — 주변 환경광(메인 렌더러 전용 텍스처)은 끔
+      const env = scene.environment; scene.environment = null; scene.fog = pipFog;
+      pipRenderer.render(scene, pipCam);
+      scene.environment = env; scene.fog = null;
+    }
+  }
+}
+
+let lastT = nowS();
+renderer.setAnimationLoop(() => {
+  const t = nowS(); const dt = Math.min(0.05, t - lastT); lastT = t;
+  updateBend(dt, t);
+  updateExplode(t, dt);
+  updateHighlight(t);
+  updateInsertion(dt);
+  updateCamera(t, dt);
+  render();
+});
+
+function onResize() {
+  renderer.setSize(innerWidth, innerHeight); labelRenderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  if (!state.userMoved && !state.closeup) { const hv = homeView(); flyTo(hv.pos, hv.target, 0.4); }
+}
+addEventListener('resize', onResize);
+wide.addEventListener('change', () => { for (const t of Object.values(tags)) placeTag(t); requestAnimationFrame(onResize); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.selected) selectPart(null); });
+
+// 시작: 살짝 옆에서 날아 들어옴
+syncUI();
+requestAnimationFrame(() => {
+  const hv = homeView();
+  camera.position.copy(hv.pos.clone().applyAxisAngle(Y_AXIS, -0.7).multiplyScalar(1.25).add(V(0, 1.5, 0)));
+  controls.target.copy(hv.target); controls.update();
+  flyTo(hv.pos, hv.target, 2.2);
+});
+</script>
+<!-- artifact:end -->
+</body>
+</html>
