@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- artifact:start -->
+<title>주판알 이동 카운터</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: 왼쪽 큰 무대(주판 → 현재 수 → 조작 → 로그 스크롤바), 오른쪽 자리별 이동 횟수 표. 좁은 화면에서는 위아래로 쌓음. */
+:root {
+  --bg: #eceff5;
+  --surface: #f8f9fc;
+  --ink: #161a2b;
+  --ink-soft: #586079;
+  --line: rgba(22, 26, 43, .12);
+  --accent: #3340b5;
+  --accent-soft: rgba(51, 64, 181, .12);
+  --on-accent: #ffffff;
+  --flash: #e89a12;
+  --frame: #4a2f22;
+  --frame-hi: #6e4835;
+  --rod: #b9a27a;
+  --board: #e2e6ef;
+  --beam: #3a251b;
+  --heat-lo: #efe2c8;
+  --heat-hi: #262c82;
+  --bead-ink-lo: #3a2c1c;
+  --bead-ink-hi: #ffffff;
+  --sheen: rgba(255, 255, 255, .22);
+  --shadow: 0 14px 34px rgba(22, 26, 43, .10);
+  --font-display: "Gowun Batang", "Nanum Myeongjo", "AppleMyungjo", serif;
+  --font-ui: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1120; --surface: #161a2c; --ink: #e7e9f4; --ink-soft: #9aa1bf;
+    --line: rgba(231, 233, 244, .12); --accent: #8e9bff; --accent-soft: rgba(142, 155, 255, .16); --on-accent: #0e1120;
+    --flash: #ffb43a; --frame: #2c1c15; --frame-hi: #4b3124; --rod: #8c7956; --board: #121628; --beam: #20140f;
+    --heat-lo: #3b3546; --heat-hi: #a3adff; --bead-ink-lo: #ddd8e6; --bead-ink-hi: #0e1120;
+    --sheen: rgba(255, 255, 255, .10); --shadow: 0 14px 34px rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1120; --surface: #161a2c; --ink: #e7e9f4; --ink-soft: #9aa1bf;
+  --line: rgba(231, 233, 244, .12); --accent: #8e9bff; --accent-soft: rgba(142, 155, 255, .16); --on-accent: #0e1120;
+  --flash: #ffb43a; --frame: #2c1c15; --frame-hi: #4b3124; --rod: #8c7956; --board: #121628; --beam: #20140f;
+  --heat-lo: #3b3546; --heat-hi: #a3adff; --bead-ink-lo: #ddd8e6; --bead-ink-hi: #0e1120;
+  --sheen: rgba(255, 255, 255, .10); --shadow: 0 14px 34px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 40px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: grid; gap: 6px; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+  line-height: 1.2;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { margin: 0; color: var(--ink-soft); max-width: 62ch; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 920px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.stage {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+@media (max-width: 520px) { .stage { padding: 14px; } }
+
+.abacus-box { width: 100%; }
+#abacus { width: 100%; height: auto; display: block; touch-action: manipulation; }
+#abacus text { font-family: var(--font-data); }
+
+.readout { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 18px; }
+.num {
+  font-family: var(--font-data);
+  font-weight: 600;
+  font-size: clamp(2rem, 6vw, 3rem);
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.num small { font-size: .38em; font-weight: 500; color: var(--ink-soft); letter-spacing: .04em; margin-left: .4em; }
+.step-note { color: var(--ink-soft); font-size: .92rem; min-width: 0; flex: 1 1 260px; text-align: right; }
+@media (max-width: 640px) { .step-note { text-align: left; } }
+.step-note b { color: var(--ink); font-weight: 600; }
+.step-note .chip {
+  display: inline-block; font-family: var(--font-data); font-size: .8rem; padding: 1px 7px; border-radius: 999px;
+  background: color-mix(in oklab, var(--flash) 22%, transparent); color: var(--ink); margin-right: 4px;
+}
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.btns { display: flex; gap: 6px; flex-wrap: wrap; }
+button {
+  font: inherit; font-size: .92rem; font-weight: 500;
+  color: var(--ink); background: transparent;
+  border: 1px solid var(--line); border-radius: 9px;
+  padding: 7px 12px; cursor: pointer; min-height: 38px;
+  font-variant-numeric: tabular-nums;
+}
+button:hover { background: var(--accent-soft); }
+button:focus-visible, input:focus-visible, .scrub:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); min-width: 86px; }
+button.primary:hover { filter: brightness(1.08); background: var(--accent); }
+.speed { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; min-width: 0; }
+.speed label { font-size: .85rem; color: var(--ink-soft); white-space: nowrap; }
+.speed input { flex: 1; min-width: 80px; accent-color: var(--accent); }
+.speed output { font-family: var(--font-data); font-size: .85rem; min-width: 7.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.jump { display: flex; gap: 6px; align-items: center; }
+.jump input {
+  font-family: var(--font-data); font-size: .95rem; width: 9.5em; padding: 7px 10px; min-height: 38px;
+  border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--ink);
+}
+
+/* 로그 스크롤바 */
+.scrub-wrap { display: grid; gap: 6px; }
+.scrub-head { display: flex; justify-content: space-between; gap: 10px; font-size: .82rem; color: var(--ink-soft); flex-wrap: wrap; }
+.scrub-head b { color: var(--ink); font-weight: 600; letter-spacing: .02em; }
+.scrub {
+  position: relative; height: 78px; cursor: pointer; touch-action: none; user-select: none;
+  border-radius: 10px; --u: 0;
+}
+.scrub-track {
+  position: absolute; left: 14px; right: 14px; top: 30px; height: 14px; border-radius: 7px;
+  background: var(--board); border: 1px solid var(--line); overflow: hidden;
+}
+.scrub-fill { position: absolute; inset: 0 auto 0 0; width: calc(var(--u) * 100%); background: var(--accent); opacity: .85; }
+.scrub-scale { position: absolute; left: 14px; right: 14px; top: 0; bottom: 0; pointer-events: none; }
+.decade { position: absolute; top: 30px; height: 14px; background: var(--ink); opacity: .045; }
+.tick { position: absolute; top: 44px; width: 1px; background: var(--ink-soft); }
+.tick.minor { height: 5px; opacity: .45; }
+.tick.major { height: 10px; opacity: .9; }
+.tick-label {
+  position: absolute; top: 56px; transform: translateX(-50%);
+  font-family: var(--font-data); font-size: 11px; color: var(--ink-soft); white-space: nowrap;
+}
+.scrub-handle {
+  position: absolute; top: 20px; left: calc(14px + var(--u) * (100% - 28px));
+  width: 22px; height: 34px; margin-left: -11px; border-radius: 7px;
+  background: var(--surface); border: 2px solid var(--accent);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .18);
+  display: grid; place-items: center;
+}
+.scrub-handle::before {
+  content: ""; width: 8px; height: 12px;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 2px, transparent 2px 3px);
+}
+.bubble {
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  font-family: var(--font-data); font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  background: var(--ink); color: var(--bg); padding: 2px 7px; border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 520px) { .tick-label.t-one { display: none; } }
+.scrub.edge-l .bubble { left: 0; transform: none; }
+.scrub.edge-r .bubble { left: auto; right: 0; transform: none; }
+
+/* 오른쪽 표 */
+aside { display: grid; gap: 16px; min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat { border-top: 2px solid var(--ink); padding-top: 8px; }
+.stat .k { font-size: .78rem; color: var(--ink-soft); letter-spacing: .02em; }
+.stat .v { font-family: var(--font-data); font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.table-box { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th, td { padding: 7px 9px; text-align: right; white-space: nowrap; }
+th { font-weight: 500; color: var(--ink-soft); font-size: .78rem; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+td { font-family: var(--font-data); font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--line); }
+td:first-child { font-family: var(--font-ui); }
+tbody tr:last-child td { border-bottom: 0; }
+tr.moved td { background: color-mix(in oklab, var(--flash) 16%, transparent); }
+td.sum { font-weight: 600; }
+td.dg { color: var(--accent); font-weight: 600; }
+.legend { display: flex; align-items: center; gap: 10px; font-size: .8rem; color: var(--ink-soft); flex-wrap: wrap; }
+.ramp { width: 120px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--heat-lo), var(--heat-hi)); border: 1px solid var(--line); }
+.sw { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--flash); border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+.notes { font-size: .88rem; color: var(--ink-soft); display: grid; gap: 6px; }
+.notes h2 { font-family: var(--font-display); font-size: 1.1rem; color: var(--ink); margin: 0; }
+.notes p { margin: 0; max-width: 62ch; }
+.notes code { font-family: var(--font-data); font-size: .85em; color: var(--ink); }
+kbd { font-family: var(--font-data); font-size: .78em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--ink); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>주판알 이동 카운터</h1>
+    <p class="lede">주판으로 0부터 1씩 더해 갑니다. 알마다 지금까지 몇 번 움직였는지 알 위에 적혀 있고, 많이 움직인 알일수록 진하게 칠해집니다. 아래 로그 눈금 스크롤바로 원하는 단계까지 바로 건너뛸 수 있습니다.</p>
+  </header>
+
+  <div class="layout">
+    <section class="stage" aria-label="주판">
+      <div class="abacus-box"><svg id="abacus" role="img" aria-label="7자리 주판"></svg></div>
+
+      <div class="readout">
+        <div class="num" id="num" aria-live="off">0<small>단계</small></div>
+        <div class="step-note" id="stepNote"></div>
+      </div>
+
+      <div class="controls">
+        <div class="btns">
+          <button id="bReset" type="button" title="0으로">⏮ 0</button>
+          <button id="bPrev" type="button" title="한 단계 뒤로 (←)">−1</button>
+          <button id="bPlay" type="button" class="primary" title="재생/정지 (Space)">▶ 재생</button>
+          <button id="bNext" type="button" title="한 단계 앞으로 (→)">+1</button>
+        </div>
+        <div class="speed">
+          <label for="speed">속도</label>
+          <input id="speed" type="range" min="0" max="9" step="1" value="1">
+          <output id="speedOut" for="speed">초당 2단계</output>
+        </div>
+        <form class="jump" id="jumpForm">
+          <input id="jumpIn" type="text" inputmode="numeric" autocomplete="off" aria-label="이동할 단계" placeholder="예: 4999">
+          <button type="submit">이동</button>
+        </form>
+      </div>
+
+      <div class="scrub-wrap">
+        <div class="scrub-head">
+          <span><b>단계 스크롤바</b> · 로그 눈금, 한 칸이 10배</span>
+          <span><kbd>←</kbd><kbd>→</kbd> ±1 · <kbd>PgUp</kbd><kbd>PgDn</kbd> ×1.26</span>
+        </div>
+        <div class="scrub" id="scrub" role="slider" tabindex="0" aria-label="단계 (로그 눈금)" aria-valuemin="0" aria-valuemax="9999999" aria-valuenow="0">
+          <div class="scrub-track"><div class="scrub-fill"></div></div>
+          <div class="scrub-scale" id="scale"></div>
+          <div class="scrub-handle"><span class="bubble" id="bubble">0</span></div>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="stats">
+        <div class="stat"><div class="k">알 이동 합계</div><div class="v" id="sTotal">0</div></div>
+        <div class="stat"><div class="k">이번 단계에 움직인 알</div><div class="v" id="sLast">0</div></div>
+        <div class="stat"><div class="k">1을 더할 때 평균</div><div class="v" id="sAvg">–</div></div>
+        <div class="stat"><div class="k">가장 많이 움직인 알</div><div class="v" id="sMax">–</div></div>
+      </div>
+
+      <div class="table-box">
+        <table>
+          <thead>
+            <tr><th>자리</th><th>숫자</th><th>윗알</th><th>아래①</th><th>아래②</th><th>아래③</th><th>아래④</th><th>합계</th></tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="legend">
+        <span>이동 횟수</span><span>0</span><span class="ramp" aria-hidden="true"></span><span>많음 (로그)</span>
+        <span><span class="sw"></span>방금 움직인 알</span>
+      </div>
+
+      <div class="notes">
+        <h2>알이 움직이는 규칙</h2>
+        <p>윗알은 5, 아래알은 하나에 1입니다. 아래알 ①은 가름대에 가장 가까운 알입니다.</p>
+        <p><b>0→1, 1→2, …</b>처럼 5를 넘지 않으면 아래알 하나만 올립니다. <b>4→5</b>는 5를 더하고 4를 빼는 방식이라 윗알을 내리고 아래알 넷을 모두 내립니다. <b>9→0</b>은 9를 빼고 윗자리에 1을 올리는 방식이라 윗알과 아래알 넷이 모두 제자리로 돌아갑니다.</p>
+        <p>그래서 한 자리의 숫자가 10번 바뀔 때마다 윗알은 2번, 아래알은 저마다 4번 움직입니다. 10<sup>p</sup> 자리의 숫자는 <code>N ÷ 10ᵖ</code>번(나머지 버림) 바뀌므로, 몇 단계로 건너뛰어도 횟수를 바로 셀 수 있습니다.</p>
+        <p>가름대의 점(•)은 일·천·백만 자리 표시입니다.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const RODS = 7;
+  const MAX = 10 ** RODS - 1;
+  const PLACE = ["일", "십", "백", "천", "만", "십만", "백만"];
+  const SPEEDS = [1, 2, 4, 8, 20, 50, 200, 1000, 5000, 50000];
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+
+  // ---------- 계산 ----------
+  // t = 1..T 중 t % 10 === r 인 개수
+  const cnt = (T, r) => r === 0 ? Math.floor(T / 10) : (T >= r ? Math.floor((T - r) / 10) + 1 : 0);
+  const digit = (n, p) => Math.floor(n / 10 ** p) % 10;
+  // 알 상태: [윗알, 아래①..④], 1 = 가름대에 붙음
+  const beadState = d => [d >= 5 ? 1 : 0, (d % 5) >= 1 ? 1 : 0, (d % 5) >= 2 ? 1 : 0, (d % 5) >= 3 ? 1 : 0, (d % 5) >= 4 ? 1 : 0];
+  // 0부터 N까지 1씩 더할 때 p 자리 각 알의 이동 횟수
+  function rodMoves(N, p) {
+    const T = Math.floor(N / 10 ** p);
+    const h = cnt(T, 5) + cnt(T, 0);
+    return [h, ...[0, 1, 2, 3].map(k => cnt(T, k + 1) + cnt(T, k + 6) + h)];
+  }
+
+  function fmtFull(x) { return x.toLocaleString("ko-KR"); }
+  function fmtShort(x) {
+    if (x < 10000) return String(x);
+    const man = x / 10000;
+    if (man < 10) return (Math.floor(man * 10) / 10).toFixed(1).replace(/\.0$/, "") + "만";
+    return Math.floor(man) + "만";
+  }
+
+  // ---------- 주판 SVG ----------
+  const G = 66, BW = 58, BH = 28, FR = 22;
+  const W = FR * 2 + RODS * G;
+  const top = FR, beamY = top + BH * 2 + 6, beamH = 12;
+  const earthTop = beamY + beamH, bottom = earthTop + BH * 5 + 6;
+  const H = bottom + FR + 40;
+  const rodX = p => FR + G / 2 + (RODS - 1 - p) * G;
+  const yHeaven = a => a ? beamY - BH / 2 - 1 : top + BH / 2 + 1;
+  const yEarth = (k, a) => a ? earthTop + 1 + BH / 2 + k * BH : bottom - 1 - BH / 2 - (3 - k) * BH;
+
+  const svg = document.getElementById("abacus");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const el = (tag, attrs, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  // 틀
+  el("rect", { x: 0, y: 0, width: W, height: bottom + FR, rx: 10, style: "fill: var(--frame)" }, svg);
+  el("rect", { x: 3, y: 3, width: W - 6, height: bottom + FR - 6, rx: 8, style: "fill: none; stroke: var(--frame-hi); stroke-width: 2" }, svg);
+  el("rect", { x: FR, y: top, width: W - FR * 2, height: bottom - top, style: "fill: var(--board)" }, svg);
+  // 축
+  for (let p = 0; p < RODS; p++) {
+    el("rect", { x: rodX(p) - 2.5, y: top, width: 5, height: bottom - top, rx: 2, style: "fill: var(--rod)" }, svg);
+  }
+  // 가름대
+  el("rect", { x: FR - 4, y: beamY, width: W - FR * 2 + 8, height: beamH, style: "fill: var(--beam)" }, svg);
+  for (const p of [0, 3, 6]) el("circle", { cx: rodX(p), cy: beamY + beamH / 2, r: 2.6, style: "fill: var(--rod)" }, svg);
+
+  // 알
+  const hw = BW / 2, hh = BH / 2 - 1;
+  const beadPath = `M${-hw},0 L${-hw * 0.52},${-hh} L${hw * 0.52},${-hh} L${hw},0 L${hw * 0.52},${hh} L${-hw * 0.52},${hh} Z`;
+  const sheenPath = `M${-hw + 6},-2 L${-hw * 0.48},${-hh + 3} L${hw * 0.48},${-hh + 3} L${hw - 6},-2 Z`;
+  const beads = []; // beads[p][i] = {g, body, outline, label, title, pos, flash}
+  for (let p = 0; p < RODS; p++) {
+    const row = [];
+    for (let i = 0; i < 5; i++) {
+      const g = el("g", {}, svg);
+      const title = el("title", {}, g);
+      const body = el("path", { d: beadPath, "stroke-linejoin": "round", style: "stroke: var(--frame); stroke-width: 1" }, g);
+      el("path", { d: sheenPath, style: "fill: var(--sheen)" }, g);
+      const outline = el("path", { d: beadPath, "stroke-linejoin": "round", style: "fill: none; stroke: var(--flash); stroke-width: 3", opacity: 0 }, g);
+      const label = el("text", { x: 0, y: 4, "text-anchor": "middle", "font-size": 11.5, "font-weight": 600 }, g);
+      row.push({ g, body, outline, label, title, pos: 0, flash: 0, lastText: "", lastHeat: -1 });
+    }
+    beads.push(row);
+  }
+  // 자리 이름과 숫자
+  const digitLabels = [];
+  for (let p = 0; p < RODS; p++) {
+    const x = rodX(p);
+    digitLabels.push(el("text", { x, y: bottom + FR + 18, "text-anchor": "middle", "font-size": 17, "font-weight": 600, style: "fill: var(--ink)" }, svg));
+    const t = el("text", { x, y: bottom + FR + 35, "text-anchor": "middle", "font-size": 13, style: "fill: var(--ink-soft); font-family: var(--font-ui)" }, svg);
+    t.textContent = PLACE[p];
+  }
+
+  // ---------- 표 ----------
+  const tbody = document.getElementById("tbody");
+  const rows = [];
+  for (let p = 0; p < RODS; p++) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${PLACE[p]}</td><td class="dg"></td><td></td><td></td><td></td><td></td><td></td><td class="sum"></td>`;
+    tbody.appendChild(tr);
+    rows.push(tr);
+  }
+
+  // ---------- 로그 스크롤바 ----------
+  const LOGMAX = Math.log10(MAX + 1); // 7
+  const toU = n => Math.log10(n + 1) / LOGMAX;
+  const fromU = u => Math.round(10 ** (Math.min(1, Math.max(0, u)) * LOGMAX) - 1);
+  const scrub = document.getElementById("scrub");
+  const scale = document.getElementById("scale");
+  const bubble = document.getElementById("bubble");
+  const pct = u => (u * 100).toFixed(4) + "%";
+  for (let k = 0; k < RODS; k++) {
+    // 짝수 10배 구간 음영
+    if (k % 2 === 1) {
+      const d = document.createElement("div");
+      d.className = "decade";
+      d.style.left = pct(toU(10 ** k - 1));
+      d.style.width = pct(toU(10 ** (k + 1) - 1) - toU(10 ** k - 1));
+      scale.appendChild(d);
+    }
+    for (let m = 1; m <= 9; m++) {
+      const n = m * 10 ** k;
+      if (n > MAX) break;
+      const t = document.createElement("div");
+      t.className = "tick " + (m === 1 ? "major" : "minor");
+      t.style.left = pct(toU(n));
+      scale.appendChild(t);
+    }
+  }
+  const tickNames = [[0, "0"], [1, "1"], [10, "10"], [100, "100"], [1000, "1천"], [10000, "1만"], [100000, "10만"], [1000000, "100만"], [MAX, "끝"]];
+  for (const [n, name] of tickNames) {
+    if (n === 0 || n === MAX) {
+      const t = document.createElement("div");
+      t.className = "tick major";
+      t.style.left = pct(toU(n));
+      scale.appendChild(t);
+    }
+    const l = document.createElement("div");
+    l.className = "tick-label";
+    l.style.left = pct(toU(n));
+    l.textContent = name;
+    if (n === 1) l.classList.add("t-one");
+    if (n === 0) l.style.transform = "translateX(-30%)";
+    if (n === MAX) l.style.transform = "translateX(-70%)";
+    scale.appendChild(l);
+  }
+
+  // ---------- 상태 ----------
+  let n = 96;
+  let shown = -1;
+  let playing = !reduceMotion;
+  let speedIdx = 1;
+  let acc = 0;
+
+  const numEl = document.getElementById("num");
+  const noteEl = document.getElementById("stepNote");
+  const sTotal = document.getElementById("sTotal");
+  const sLast = document.getElementById("sLast");
+  const sAvg = document.getElementById("sAvg");
+  const sMax = document.getElementById("sMax");
+  const bPlay = document.getElementById("bPlay");
+  const speedIn = document.getElementById("speed");
+  const speedOut = document.getElementById("speedOut");
+
+  function describeStep(m) {
+    if (m === 0) return { html: "처음 상태입니다. 모든 알이 가름대에서 떨어져 있습니다.", moved: 0, rods: [] };
+    const parts = [];
+    const rods = [];
+    let moved = 0;
+    for (let p = 0; p < RODS; p++) {
+      const a = digit(m - 1, p), b = digit(m, p);
+      if (a === b) continue;
+      rods.push(p);
+      const sa = beadState(a), sb = beadState(b);
+      const c = sa.reduce((s, v, i) => s + (v !== sb[i] ? 1 : 0), 0);
+      moved += c;
+      let how;
+      if (a === 4) how = "윗알 내리고 아래알 4개 내림 (+5 −4)";
+      else if (a === 9) how = "윗알 올리고 아래알 4개 내림, 윗자리에 1 올림 (−9 +10)";
+      else how = "아래알 1개 올림";
+      parts.push(`<span class="chip">${PLACE[p]} ${a}→${b}</span>${how}`);
+    }
+    return { html: `<b>${fmtFull(m - 1)} → ${fmtFull(m)}</b><br>` + parts.reverse().join("<br>"), moved, rods };
+  }
+
+  function setN(v, fromUser) {
+    v = Math.max(0, Math.min(MAX, Math.round(v)));
+    if (fromUser && playing) setPlaying(false);
+    n = v;
+  }
+
+  function render() {
+    if (shown === n) return;
+    const prev = shown;
+    shown = n;
+    numEl.innerHTML = `${fmtFull(n)}<small>단계</small>`;
+    // 이동 횟수
+    const moves = [];
+    let total = 0, best = 0, bestAt = null;
+    for (let p = 0; p < RODS; p++) {
+      const mv = rodMoves(n, p);
+      moves.push(mv);
+      mv.forEach((c, i) => { total += c; if (c > best) { best = c; bestAt = [p, i]; } });
+    }
+    const logBest = Math.log10(best + 1) || 1;
+    for (let p = 0; p < RODS; p++) {
+      const d = digit(n, p);
+      const st = beadState(d);
+      digitLabels[p].textContent = d;
+      const r = rows[p].children;
+      r[1].textContent = d;
+      let sum = 0;
+      for (let i = 0; i < 5; i++) {
+        const b = beads[p][i];
+        const c = moves[p][i];
+        sum += c;
+        b.target = st[i];
+        if (prev >= 0 && beadState(digit(prev, p))[i] !== st[i]) b.flash = 1;
+        const heat = best ? Math.round(100 * Math.log10(c + 1) / logBest) : 0;
+        if (heat !== b.lastHeat) {
+          b.lastHeat = heat;
+          b.body.style.fill = `color-mix(in oklab, var(--heat-hi) ${heat}%, var(--heat-lo))`;
+          b.label.style.fill = heat > 52 ? "var(--bead-ink-hi)" : "var(--bead-ink-lo)";
+        }
+        const txt = fmtShort(c);
+        if (txt !== b.lastText) { b.lastText = txt; b.label.textContent = txt; }
+        b.title.textContent = `${PLACE[p]}의 자리 ${i === 0 ? "윗알" : "아래알 " + "①②③④"[i - 1]}: ${fmtFull(c)}번`;
+        r[2 + i].textContent = fmtFull(c);
+      }
+      r[7].textContent = fmtFull(sum);
+    }
+    const step = describeStep(n);
+    noteEl.innerHTML = step.html;
+    rows.forEach((tr, p) => tr.classList.toggle("moved", step.rods.includes(p)));
+    sTotal.textContent = fmtFull(total);
+    sLast.textContent = step.moved;
+    sAvg.textContent = n ? (total / n).toFixed(3) : "–";
+    sMax.textContent = bestAt ? `${PLACE[bestAt[0]]} ${bestAt[1] === 0 ? "윗알" : "아래" + "①②③④"[bestAt[1] - 1]}` : "–";
+    // 스크롤바
+    const u = toU(n);
+    scrub.style.setProperty("--u", u);
+    scrub.classList.toggle("edge-l", u < .06);
+    scrub.classList.toggle("edge-r", u > .94);
+    bubble.textContent = fmtFull(n);
+    scrub.setAttribute("aria-valuenow", n);
+    scrub.setAttribute("aria-valuetext", fmtFull(n) + "단계");
+  }
+
+  function placeBeads(dt) {
+    const k = reduceMotion ? 1 : 1 - Math.exp(-dt * 22);
+    for (let p = 0; p < RODS; p++) {
+      for (let i = 0; i < 5; i++) {
+        const b = beads[p][i];
+        b.pos += (b.target - b.pos) * k;
+        if (Math.abs(b.target - b.pos) < 0.002) b.pos = b.target;
+        const y = i === 0 ? yHeaven(0) + (yHeaven(1) - yHeaven(0)) * b.pos
+                          : yEarth(i - 1, 0) + (yEarth(i - 1, 1) - yEarth(i - 1, 0)) * b.pos;
+        b.g.setAttribute("transform", `translate(${rodX(p)},${y.toFixed(2)})`);
+        b.flash = Math.max(0, b.flash - dt * 2.2);
+        b.outline.setAttribute("opacity", b.flash.toFixed(3));
+      }
+    }
+  }
+
+  function setPlaying(v) {
+    playing = v;
+    if (playing && n >= MAX) n = 0;
+    acc = 0;
+    bPlay.textContent = playing ? "❚❚ 정지" : "▶ 재생";
+  }
+  function setSpeed(i) {
+    speedIdx = i;
+    speedIn.value = i;
+    speedOut.textContent = `초당 ${fmtFull(SPEEDS[i])}단계`;
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    if (playing) {
+      acc += dt * SPEEDS[speedIdx];
+      const s = Math.floor(acc);
+      if (s > 0) {
+        acc -= s;
+        n = Math.min(MAX, n + s);
+        if (n >= MAX) setPlaying(false);
+      }
+    }
+    render();
+    placeBeads(dt);
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- 입력 ----------
+  document.getElementById("bReset").onclick = () => setN(0, true);
+  document.getElementById("bPrev").onclick = () => setN(n - 1, true);
+  document.getElementById("bNext").onclick = () => setN(n + 1, true);
+  bPlay.onclick = () => setPlaying(!playing);
+  speedIn.oninput = () => setSpeed(+speedIn.value);
+  document.getElementById("jumpForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const inp = document.getElementById("jumpIn");
+    const v = parseInt(inp.value.replace(/[^\d]/g, ""), 10);
+    if (Number.isFinite(v)) { setN(v, true); inp.value = ""; inp.placeholder = `0 ~ ${fmtFull(MAX)}`; }
+  });
+
+  function uFromEvent(e) {
+    const r = scrub.getBoundingClientRect();
+    return (e.clientX - r.left - 14) / (r.width - 28);
+  }
+  let dragging = false;
+  scrub.addEventListener("pointerdown", e => {
+    dragging = true;
+    scrub.setPointerCapture(e.pointerId);
+    scrub.focus({ preventScroll: true });
+    setN(fromU(uFromEvent(e)), true);
+  });
+  scrub.addEventListener("pointermove", e => { if (dragging) setN(fromU(uFromEvent(e)), true); });
+  const endDrag = () => { dragging = false; };
+  scrub.addEventListener("pointerup", endDrag);
+  scrub.addEventListener("pointercancel", endDrag);
+  const mulStep = (dir) => {
+    const f = 10 ** (dir * 0.1);
+    const v = Math.round((n + 1) * f - 1);
+    setN(v === n ? n + dir : v, true);
+  };
+  scrub.addEventListener("keydown", e => {
+    const map = {
+      ArrowRight: () => setN(n + 1, true), ArrowUp: () => setN(n + 1, true),
+      ArrowLeft: () => setN(n - 1, true), ArrowDown: () => setN(n - 1, true),
+      PageUp: () => mulStep(1), PageDown: () => mulStep(-1),
+      Home: () => setN(0, true), End: () => setN(MAX, true),
+    };
+    if (map[e.key]) { e.preventDefault(); e.stopPropagation(); map[e.key](); }
+  });
+  document.addEventListener("keydown", e => {
+    const t = e.target;
+    if (t.closest && t.closest("input, button, textarea, select, .scrub")) return;
+    if (e.key === " ") { e.preventDefault(); setPlaying(!playing); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); setN(n + 1, true); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); setN(n - 1, true); }
+  });
+
+  // 시작: 처음 위치에 알을 바로 놓음
+  setSpeed(speedIdx);
+  setPlaying(playing);
+  render();
+  for (const row of beads) for (const b of row) { b.pos = b.target; b.flash = 0; }
+  placeBeads(0);
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- artifact:end -->
+</body>
+</html>
